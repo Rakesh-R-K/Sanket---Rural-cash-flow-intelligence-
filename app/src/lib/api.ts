@@ -23,11 +23,23 @@ export interface Profile extends Omit<EnterpriseRow, 'risk' | 'reason_count' | '
   recent_transactions: { type: string; amount: number; note: string; entered_at: string; source: string }[]
   interventions: { officer_note: string; logged_at: string; outcome: string }[]
 }
+export interface Bulletin {
+  sector: string; driver: string; z: number
+  exposed_units: number; stressed_units: number; text: string
+}
 export interface DistrictRisk {
   district: string
   blocks: Record<string, { levels: Record<string, number>; sectors: Record<string, Record<string, number>> }>
   signals: { commodity: string; kind: string; magnitude_z: number; detected_at: string }[]
   kpis: { total: number; alerts: number; warnings: number }
+  bulletins: Bulletin[]
+}
+export interface LeadTime {
+  flags_with_projected_distress: number
+  median_lead_days: number | null
+  min_lead_days: number | null
+  max_lead_days: number | null
+  target_days: number
 }
 
 const BASE = '/api'
@@ -42,6 +54,7 @@ export const api = {
   enterprises: () => get<EnterpriseRow[]>('/enterprises'),
   profile: (id: number) => get<Profile>(`/enterprises/${id}`),
   district: (d = 'Wardha') => get<DistrictRisk>(`/risk/district/${d}`),
+  leadtime: () => get<LeadTime>('/validation/leadtime'),
   saakh: (id: number) => get<Profile & { discipline: Record<string, number | string>; generated_at: string; disclaimer_en: string }>(`/saakh/${id}`),
   shock: (key: string) => fetch(`${BASE}/simulate/shock/${key}`, { method: 'POST' }).then(r => r.json()),
   reset: () => fetch(`${BASE}/admin/reset`, { method: 'POST' }).then(r => r.json()),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type DistrictRisk, type EnterpriseRow } from '../lib/api'
+import { api, type DistrictRisk, type EnterpriseRow, type LeadTime } from '../lib/api'
 import { RiskBadge, SECTOR_ICON, SECTOR_LABEL } from './shared'
 import { EnterpriseProfile } from './EnterpriseProfile'
 
@@ -57,13 +57,14 @@ function SignalTicker({ signals }: { signals: DistrictRisk['signals'] }) {
 export function OfficerConsole() {
   const [rows, setRows] = useState<EnterpriseRow[]>([])
   const [district, setDistrict] = useState<DistrictRisk | null>(null)
+  const [lead, setLead] = useState<LeadTime | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
   const [blockFilter, setBlockFilter] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const refresh = async () => {
-    const [r, d] = await Promise.all([api.enterprises(), api.district()])
-    setRows(r); setDistrict(d)
+    const [r, d, l] = await Promise.all([api.enterprises(), api.district(), api.leadtime()])
+    setRows(r); setDistrict(d); setLead(l)
   }
   useEffect(() => { void refresh() }, [])
 
@@ -125,6 +126,39 @@ export function OfficerConsole() {
 
       {/* right rail: cascade map + signals + scenario controls */}
       <div className="space-y-4">
+        {lead && lead.median_lead_days != null && (
+          <section className="rounded-lg border border-green-200 bg-green-50 p-3 shadow-sm">
+            <h3 className="text-sm font-bold text-green-900">Early-Warning Lead Time</h3>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-green-800">{lead.median_lead_days}</span>
+              <span className="text-sm text-gray-600">days median</span>
+              <span className={`ml-auto text-xs font-semibold ${lead.median_lead_days >= lead.target_days ? 'text-green-700' : 'text-amber-700'}`}>
+                target {lead.target_days}d
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-gray-500">
+              Median warning before projected cash distress across {lead.flags_with_projected_distress} flags — the intervention window, not an accuracy score.
+            </p>
+          </section>
+        )}
+        {district && district.bulletins.length > 0 && (
+          <section className="rounded-lg border border-red-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-red-800">Cluster Bulletins</h3>
+            <div className="space-y-2">
+              {district.bulletins.map((b, i) => (
+                <div key={i} className="rounded border border-red-100 bg-red-50/60 p-2">
+                  <div className="flex items-center gap-1 text-xs font-semibold">
+                    {SECTOR_ICON[b.sector]} {SECTOR_LABEL[b.sector]}
+                    <span className="ml-auto rounded bg-red-200 px-1.5 text-[10px] text-red-800">
+                      {b.stressed_units}/{b.exposed_units} stressed
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-snug text-gray-700">{b.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         {district && (
           <>
             <section className="rounded-lg border bg-white p-3 shadow-sm">

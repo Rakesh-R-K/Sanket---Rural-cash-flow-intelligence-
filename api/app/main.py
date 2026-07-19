@@ -144,9 +144,41 @@ def district_risk(district: str):
               f.enterprise_id=e.id AND f.status='open' AND f.level='warning')
               THEN 1 ELSE 0 END) warnings
         FROM enterprises e WHERE e.district=?""", (district,)).fetchone()
+
+    # Cluster bulletins: the district-level story a DDM or bank regional
+    # office consumes. Auto-composed from signals x sector exposure x flags.
+    from .engine import EXPOSURE
+    SIGNAL_SECTORS = {"maize": "maize_price", "soybean": "soybean_price"}
+    bulletins = []
+    for s in signals:
+        key = ("rain_deficit" if s["kind"] in ("rain_deficit", "rain_excess")
+               else SIGNAL_SECTORS.get(s["commodity"]))
+        exposed = EXPOSURE.get(key, {}) if key else {}
+        for sector, share in sorted(exposed.items(), key=lambda kv: -kv[1]):
+            row = con.execute("""
+                SELECT COUNT(DISTINCT e.id) n,
+                  SUM(CASE WHEN f.level IN ('alert','warning') THEN 1 ELSE 0 END) hot
+                FROM enterprises e LEFT JOIN flags f
+                  ON f.enterprise_id=e.id AND f.status='open'
+                WHERE e.district=? AND e.sector=?""", (district, sector)).fetchone()
+            if not row["n"]:
+                continue
+            driver = ("monsoon deficit" if key == "rain_deficit"
+                      else f"{s['commodity']} price {'spike' if 'spike' in s['kind'] else 'shift'}")
+            bulletins.append({
+                "sector": sector, "driver": driver, "z": s["magnitude_z"],
+                "exposed_units": row["n"], "stressed_units": row["hot"] or 0,
+                "text": (f"{sector.replace('_', ' ').title()} cluster, {district}: "
+                         f"{driver} (z={s['magnitude_z']}). {row['n']} units exposed "
+                         f"(~{int(share*100)}% cost/income sensitivity), "
+                         f"{row['hot'] or 0} showing combined stress. Recommended: "
+                         + ("advance input purchase advisories; review EMI schedules of stressed units."
+                            if key != "rain_deficit" else
+                            "cash-buffer advisories; monitor demand-linked enterprises.")),
+            })
     con.close()
     return {"district": district, "blocks": blocks, "signals": signals,
-            "kpis": dict(kpis)}
+            "kpis": dict(kpis), "bulletins": bulletins}
 
 
 @app.post("/transactions/batch")
@@ -202,6 +234,51 @@ def simulate_shock(shock_key: str):
 def admin_reset():
     """Pristine demo state in seconds."""
     return reset_and_recascade()
+
+
+@app.get("/validation/leadtime")
+def validation_leadtime():
+    """North Star Metric, computed live: for every open flag, days between
+    the flag opening and the first forecast month projected cash-negative.
+    This is early-warning lead time - the intervention window the system
+    buys for the field officer. No accuracy-%; behavioral validation only.
+    """
+    con = db.connect()
+    lead_days: list[int] = []
+    detail = []
+    for f in con.execute("""
+        SELECT f.id, f.enterprise_id, f.opened_at, e.name FROM flags f
+        JOIN enterprises e ON e.id=f.enterprise_id WHERE f.status='open'"""):
+        fc = con.execute(
+            "SELECT points_json FROM forecasts WHERE enterprise_id=?"
+            " ORDER BY id DESC LIMIT 1", (f["enterprise_id"],)).fetchone()
+        if not fc:
+            continue
+        points = json.loads(fc["points_json"])
+        neg = next((p for p in points if p["net"] < 0), None)
+        if not neg:
+            continue
+        opened = datetime.fromisoformat(f["opened_at"])
+        distress = datetime.fromisoformat(neg["month"] + "-15")  # mid-month
+        days = (distress - opened).days
+        if days > 0:
+            lead_days.append(days)
+            detail.append({"enterprise": f["name"], "flagged": f["opened_at"],
+                           "projected_distress_month": neg["month"],
+                           "lead_days": days})
+    con.close()
+    lead_days.sort()
+    n = len(lead_days)
+    return {
+        "flags_with_projected_distress": n,
+        "median_lead_days": lead_days[n // 2] if n else None,
+        "min_lead_days": lead_days[0] if n else None,
+        "max_lead_days": lead_days[-1] if n else None,
+        "target_days": 45,
+        "interpretation": ("Median lead time is the intervention window the "
+                           "system buys before projected cash distress."),
+        "detail": sorted(detail, key=lambda d: d["lead_days"])[:10],
+    }
 
 
 @app.get("/saakh/{eid}")
