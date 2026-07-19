@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --sanket-green: #166534;
+  --sanket-cream: #fafaf5;
+}
+
+body {
+  background: var(--sanket-cream);
+  font-family: ui-sans-serif, system-ui, "Noto Sans Devanagari", sans-serif;
+}
+
+/* risk triple-coding: never color alone (icon + color + label in markup) */
+.risk-alert   { @apply bg-red-100 text-red-800 border-red-300; }
+.risk-warning { @apply bg-amber-100 text-amber-800 border-amber-300; }
+.risk-watch   { @apply bg-yellow-50 text-yellow-800 border-yellow-200; }
+.risk-healthy { @apply bg-emerald-50 text-emerald-800 border-emerald-200; }
+
+/* SAAKH report: bank-grade on screen, clean on paper */
+@media print {
+  body * { visibility: hidden; }
+  #saakh-report, #saakh-report * { visibility: visible; }
+  #saakh-report { position: absolute; inset: 0; width: 100%; }
+  .no-print { display: none !important; }
+}
