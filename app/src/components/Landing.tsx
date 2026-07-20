@@ -8,6 +8,8 @@ import {
   useMotionValue, type MotionValue,
 } from 'framer-motion'
 import { Icon } from './icons'
+import { useT, LangContext } from '../lib/i18n'
+import { useContext } from 'react'
 
 const EASE = [.22, .8, .22, 1] as const
 
@@ -54,7 +56,11 @@ function Orb({ progress, factor, className, size }:
 
 /* ───────────────────────── sections ───────────────────────── */
 
-function Hero({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => void }) {
+interface NavCtl { theme: 'dark' | 'light'; setTheme: (t: 'dark' | 'light') => void }
+
+function Hero({ onEnter, theme, setTheme }: { onEnter: (v: 'officer' | 'enterprise') => void } & NavCtl) {
+  const { t, lang } = useT()
+  const setLang = useContext(LangContext).setLang
   const ref = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
   const fade = useTransform(scrollYProgress, [0, .8], [1, 0])
@@ -68,16 +74,24 @@ function Hero({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => void }) {
       {/* landing nav */}
       <nav className="z-10 flex items-center justify-between px-6 py-5 md:px-12">
         <motion.div className="flex items-center gap-2.5" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7, ease: EASE }}>
-          <span className="grid h-9 w-9 place-items-center rounded-full border border-[rgba(201,242,75,.4)] bg-[rgba(201,242,75,.08)] text-[var(--lime)]">
+          <span className="grid h-9 w-9 place-items-center rounded-full border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--lime)]">
             <Icon.signal size={16} />
           </span>
           <span className="display text-sm font-bold tracking-tight">संकेत SANKET</span>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7, delay: .1, ease: EASE }}>
+        <motion.div className="flex items-center gap-2" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7, delay: .1, ease: EASE }}>
+          <button onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
+            className="rounded-full border border-[var(--edge)] bg-[var(--surface)] px-3.5 py-2 text-xs font-bold text-[var(--ink-dim)] transition-colors hover:text-[var(--lime)]">
+            {lang === 'en' ? 'हिंदी' : 'EN'}
+          </button>
+          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="toggle theme"
+            className="grid h-8 w-8 place-items-center rounded-full border border-[var(--edge)] bg-[var(--surface)] text-[var(--ink-dim)] transition-colors hover:text-[var(--lime)]">
+            {theme === 'dark' ? <Icon.sun size={14} /> : <Icon.moon size={14} />}
+          </button>
           <button onClick={() => onEnter('officer')}
-            className="rounded-full bg-[var(--lime)] px-5 py-2.5 text-xs font-bold text-[#111] transition-transform hover:scale-105 active:scale-95"
+            className="rounded-full bg-[var(--accent-btn)] px-5 py-2.5 text-xs font-bold text-[var(--on-accent)] transition-transform hover:scale-105 active:scale-95"
             style={{ boxShadow: '0 0 30px -8px var(--lime-glow)' }}>
-            Launch console →
+            {t('lLaunch')}
           </button>
         </motion.div>
       </nav>
@@ -85,32 +99,30 @@ function Hero({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => void }) {
       {/* hero copy */}
       <motion.div style={{ opacity: fade, y: rise }} className="z-10 flex flex-1 flex-col justify-center px-6 md:px-12">
         <motion.div className="kicker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .3 }}>
-          NABARD Hackathon · Global Fintech Fest 2026
+          {t('lKicker')}
         </motion.div>
         <h1 className="display mt-6 max-w-[13ch] text-[clamp(3rem,9.5vw,8.5rem)] font-extrabold leading-[.98] tracking-tight">
-          <WordReveal text="See trouble" delay={.35} />
+          <WordReveal key={lang + 1} text={t('lHero1')} delay={.35} />
           <br />
-          <WordReveal text="before it" delay={.55} />
+          <WordReveal key={lang + 2} text={t('lHero2')} delay={.55} />
           <span className="serif-accent font-normal text-[var(--lime)]" style={{ textShadow: '0 0 50px var(--lime-glow)' }}>
-            <WordReveal text=" arrives." delay={.75} />
+            <WordReveal key={lang + 3} text={' ' + t('lHero3')} delay={.75} />
           </span>
         </h1>
         <motion.p className="mt-8 max-w-xl text-base leading-relaxed text-[var(--ink-dim)] md:text-lg"
           initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .8, delay: 1, ease: EASE }}>
-          Cash-flow forecasting and early-warning intelligence for India's rural micro
-          enterprises — offline-first, explainable, and built to turn quiet reliability
-          into bank credit.
+          {t('lSub')}
         </motion.p>
         <motion.div className="mt-10 flex flex-wrap gap-3"
           initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .8, delay: 1.15, ease: EASE }}>
           <button onClick={() => onEnter('officer')}
-            className="group flex items-center gap-2 rounded-full bg-[var(--ink)] px-6 py-3.5 text-sm font-bold text-[#111] transition-transform hover:scale-[1.04] active:scale-95">
-            <Icon.users size={15} /> Field Officer Console
+            className="group flex items-center gap-2 rounded-full bg-[var(--ink)] px-6 py-3.5 text-sm font-bold text-[var(--on-accent)] transition-transform hover:scale-[1.04] active:scale-95">
+            <Icon.users size={15} /> {t('lCtaOfficer')}
             <span className="transition-transform group-hover:translate-x-1"><Icon.arrowRight size={15} /></span>
           </button>
           <button onClick={() => onEnter('enterprise')}
-            className="group flex items-center gap-2 rounded-full border border-[var(--edge-lit)] bg-[var(--surface)] px-6 py-3.5 text-sm font-bold text-[var(--ink)] transition-all hover:border-[rgba(201,242,75,.5)] hover:scale-[1.04] active:scale-95">
-            <Icon.home size={15} /> Lakshmi's App
+            className="group flex items-center gap-2 rounded-full border border-[var(--edge-lit)] bg-[var(--surface)] px-6 py-3.5 text-sm font-bold text-[var(--ink)] transition-all hover:border-[var(--accent-border)] hover:scale-[1.04] active:scale-95">
+            <Icon.home size={15} /> {t('lCtaEnterprise')}
           </button>
         </motion.div>
       </motion.div>
@@ -120,7 +132,7 @@ function Hero({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => void }) {
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.8 }}>
         <motion.div className="mono flex flex-col items-center gap-2 text-[9px] uppercase tracking-[.3em] text-[var(--ink-faint)]"
           animate={{ y: [0, 8, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}>
-          scroll
+          {t('lScroll')}
           <span className="block h-8 w-px bg-gradient-to-b from-[var(--lime)] to-transparent" />
         </motion.div>
       </motion.div>
@@ -141,7 +153,7 @@ function MarqueeBand() {
             style={{ animationDirection: r ? 'reverse' : 'normal', animationDuration: r ? '36s' : '30s' }}>
             {[...row, ...row].map((t, i) => (
               <span key={i} className={`flex items-center gap-8 ${i % 2 ? 'text-[var(--ink-faint)]' : 'text-[var(--ink)]'}`}>
-                {t}<span className="h-2 w-2 rounded-full bg-[var(--lime)]" style={{ opacity: .6 }} />
+                {t}<span className="h-2 w-2 rounded-full bg-[var(--accent-btn)]" style={{ opacity: .6 }} />
               </span>
             ))}
           </div>
@@ -152,17 +164,18 @@ function MarqueeBand() {
 }
 
 function StatWall() {
+  const { t, lang } = useT()
   const stats = [
-    { v: 1.9, d: 1, suffix: '%', label: 'NPA on SHG lending — rural India repays better than corporate India', tone: 'var(--lime)' },
-    { v: 46, d: 0, suffix: '%', label: 'of savings-linked SHGs still cannot access formal credit', tone: 'var(--ink)' },
-    { v: 8, d: 0, suffix: '/10', label: 'of the new FPOs have no credit-guarantee cover', tone: 'var(--ink)' },
+    { v: 1.9, d: 1, suffix: '%', label: t('lStat1'), tone: 'var(--lime)' },
+    { v: 46, d: 0, suffix: '%', label: t('lStat2'), tone: 'var(--ink)' },
+    { v: 8, d: 0, suffix: '/10', label: t('lStat3'), tone: 'var(--ink)' },
   ]
   return (
     <section className="px-6 py-28 md:px-12 md:py-40">
-      <div className="kicker">The problem, in three numbers</div>
+      <div className="kicker">{t('lStatKicker')}</div>
       <h2 className="display mt-6 max-w-[16ch] text-[clamp(2rem,5vw,4.2rem)] font-extrabold leading-[1.04] tracking-tight">
-        <WordReveal text="Rural India doesn't have a repayment problem. It has a" />
-        <span className="serif-accent font-normal text-[var(--lime)]"><WordReveal text=" visibility problem." delay={.3} /></span>
+        <WordReveal key={lang + "sw"} text={t('lStatHl1')} />
+        <span className="serif-accent font-normal text-[var(--lime)]"><WordReveal key={lang + "sw2"} text={t('lStatHl2')} delay={.3} /></span>
       </h2>
       <div className="mt-20 grid gap-12 md:grid-cols-3 md:gap-8">
         {stats.map((s, i) => (
@@ -189,12 +202,13 @@ const STEPS = [
 ] as const
 
 function PinnedSteps() {
+  const { t } = useT()
   const ref = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] })
   return (
     <section ref={ref} className="relative" style={{ height: `${(STEPS.length + 1) * 100}vh` }}>
       <div className="sticky top-0 flex h-[100svh] flex-col justify-center overflow-hidden px-6 md:px-12">
-        <div className="kicker">How Sanket works</div>
+        <div className="kicker">{t('lHowKicker')}</div>
         <div className="mt-4 grid items-center gap-10 md:grid-cols-[1fr_1.2fr]">
           {/* step index rail */}
           <div className="space-y-5">
@@ -211,7 +225,7 @@ function PinnedSteps() {
         </div>
         {/* progress bar */}
         <div className="mt-10 h-px w-full bg-[var(--edge)]">
-          <motion.div className="h-full origin-left bg-[var(--lime)]" style={{ scaleX: scrollYProgress, boxShadow: '0 0 12px var(--lime-glow)' }} />
+          <motion.div className="h-full origin-left bg-[var(--accent-btn)]" style={{ scaleX: scrollYProgress, boxShadow: '0 0 12px var(--lime-glow)' }} />
         </div>
       </div>
     </section>
@@ -271,6 +285,7 @@ function StepArt({ step, index, progress }: { step: typeof STEPS[number]; index:
 
 /* SAAKH — 3D scroll-rotating paper */
 function SaakhShowcase() {
+  const { t, lang } = useT()
   const ref = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
   const rotateX = useTransform(scrollYProgress, [0, .5, 1], [38, 0, -12])
@@ -278,15 +293,13 @@ function SaakhShowcase() {
   return (
     <section ref={ref} className="grid items-center gap-14 overflow-hidden px-6 py-28 md:grid-cols-2 md:px-12 md:py-44">
       <div>
-        <div className="kicker">The artifact</div>
+        <div className="kicker">{t('lSaakhKicker')}</div>
         <h2 className="display mt-6 text-[clamp(2rem,4.5vw,3.8rem)] font-extrabold leading-[1.05] tracking-tight">
-          <WordReveal text="Two years of quiet reliability," />
-          <span className="serif-accent font-normal text-[var(--lime)]"><WordReveal text=" on one page a bank believes." delay={.25} /></span>
+          <WordReveal key={lang+"sa"} text={t('lSaakhHl1')} />
+          <span className="serif-accent font-normal text-[var(--lime)]"><WordReveal key={lang+"sb"} text={t('lSaakhHl2')} delay={.25} /></span>
         </h2>
         <p className="mt-6 max-w-lg text-sm leading-relaxed text-[var(--ink-dim)] md:text-base">
-          SAAKH (साख) compiles an enterprise's records into an evidence dossier — savings
-          regularity, repayment record, shocks survived, six-month outlook. Generated only
-          at the enterprise's request. Not a credit score — proof.
+          {t('lSaakhSub')}
         </p>
       </div>
       <div style={{ perspective: 1400 }} className="flex justify-center">
@@ -321,18 +334,19 @@ function SaakhShowcase() {
 }
 
 function ClosingCTA({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => void }) {
+  const { t, lang } = useT()
   return (
     <section className="px-6 pb-24 pt-10 md:px-12">
       <h2 className="display max-w-[16ch] text-[clamp(2.4rem,6vw,5rem)] font-extrabold leading-[1.02] tracking-tight">
-        <WordReveal text="Lakshmi doesn't need charity. She needs to be" />
+        <WordReveal key={lang+"c1"} text={t('lClosing1')} />
         <span className="serif-accent font-normal text-[var(--lime)]" style={{ textShadow: '0 0 40px var(--lime-glow)' }}>
-          <WordReveal text=" seen." delay={.4} />
+          <WordReveal key={lang+"c2"} text={t('lClosing2')} delay={.4} />
         </span>
       </h2>
       <div className="mt-16 grid gap-5 md:grid-cols-2">
         {[
-          { v: 'officer' as const, icon: 'users' as const, title: 'Field Officer Console', sub: '168 enterprises · 4 districts · triage, cascade, bulletins' },
-          { v: 'enterprise' as const, icon: 'home' as const, title: "Lakshmi's App", sub: 'Offline entries · Hindi alerts · SAAKH on request' },
+          { v: 'officer' as const, icon: 'users' as const, title: t('lCtaOfficer'), sub: t('lCardOffSub') },
+          { v: 'enterprise' as const, icon: 'home' as const, title: t('lCtaEnterprise'), sub: t('lCardEntSub') },
         ].map((c, i) => {
           const I = Icon[c.icon]
           return (
@@ -341,7 +355,7 @@ function ClosingCTA({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => voi
               transition={{ duration: .7, delay: i * .12, ease: EASE }}
               whileHover={{ y: -8, transition: { type: 'spring', stiffness: 320, damping: 22 } }}
               className="panel panel-lit group flex items-center gap-5 p-8 text-left">
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[rgba(201,242,75,.1)] text-[var(--lime)]">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[var(--accent-soft)] text-[var(--lime)]">
                 <I size={24} />
               </span>
               <span className="flex-1">
@@ -363,10 +377,10 @@ function ClosingCTA({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => voi
   )
 }
 
-export function Landing({ onEnter }: { onEnter: (v: 'officer' | 'enterprise') => void }) {
+export function Landing({ onEnter, theme, setTheme }: { onEnter: (v: 'officer' | 'enterprise') => void } & NavCtl) {
   return (
     <div className="relative">
-      <Hero onEnter={onEnter} />
+      <Hero onEnter={onEnter} theme={theme} setTheme={setTheme} />
       <MarqueeBand />
       <StatWall />
       <PinnedSteps />

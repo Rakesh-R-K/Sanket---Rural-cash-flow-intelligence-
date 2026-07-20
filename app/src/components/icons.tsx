@@ -60,6 +60,9 @@ export const Icon = {
     <path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></>, p),
   plus: (p: IconProps = {}) => base(<>
     <circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>, p),
+  sun: (p: IconProps = {}) => base(<>
+    <circle cx="12" cy="12" r="4.5" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" /></>, p),
+  moon: (p: IconProps = {}) => base(<path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 108.5 10.5z" />, p),
   chevronLeft: (p: IconProps = {}) => base(<path d="M14 6l-6 6 6 6" />, p),
   print: (p: IconProps = {}) => base(<>
     <path d="M7 8V3h10v5" /><rect x="4" y="8" width="16" height="8" rx="1" /><path d="M7 14h10v7H7v-7z" /></>, p),

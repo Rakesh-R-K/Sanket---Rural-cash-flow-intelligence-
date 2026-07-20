@@ -46,7 +46,7 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
             <motion.div className="cascade-step" initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
               animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
               transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
-              <div className="cascade-node active bg-[rgba(251,191,36,.12)] text-[var(--sig-amber)]">
+              <div className="cascade-node active bg-[var(--amber-soft)] text-[var(--sig-amber)]">
                 <Icon.signal size={18} />
               </div>
               <div>
@@ -64,7 +64,7 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
             <motion.div className="cascade-step" initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
               animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
               transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
-              <div className="cascade-node active bg-[rgba(251,95,95,.12)] text-[var(--sig-red)]">
+              <div className="cascade-node active bg-[var(--red-soft)] text-[var(--sig-red)]">
                 <Icon.alert size={18} />
               </div>
               <div className="flex-1">
@@ -86,7 +86,7 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
             <motion.div className="cascade-step" initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
               animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
               transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
-              <div className="cascade-node active bg-[rgba(56,189,248,.12)] text-[var(--sig-blue)]">
+              <div className="cascade-node active bg-[var(--blue-soft)] text-[var(--sig-blue)]">
                 <Icon.map size={18} />
               </div>
               <div className="flex-1">
@@ -111,11 +111,11 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
 
         {/* step 4: flags raised */}
         {step >= 4 && (
-          <motion.div className="cascade-step" style={{ borderColor: 'rgba(248,113,113,.4)' }}
+          <motion.div className="cascade-step" style={{ borderColor: 'var(--red-border)' }}
             initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
             animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
-            <div className="cascade-node active bg-[rgba(251,95,95,.15)] text-[var(--sig-red)]">
+            <div className="cascade-node active bg-[var(--red-soft)] text-[var(--sig-red)]">
               <Icon.bell size={18} />
             </div>
             <div className="flex-1">
@@ -124,7 +124,7 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
               </div>
               <div className="mono mt-1.5 flex gap-4 text-xs">
                 {(['alert', 'warning', 'watch'] as const).map(l => (
-                  <span key={l} className={l === 'alert' ? 'text-[var(--sig-red)]' : l === 'warning' ? 'text-[var(--sig-amber)]' : 'text-[#fde047]'}>
+                  <span key={l} className={l === 'alert' ? 'text-[var(--sig-red)]' : l === 'warning' ? 'text-[var(--sig-amber)]' : 'text-[var(--watch)]'}>
                     {levels[l] ?? 0} {l}
                   </span>
                 ))}

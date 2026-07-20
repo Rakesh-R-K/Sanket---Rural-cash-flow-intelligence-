@@ -7,6 +7,7 @@ import { api, type Profile } from '../lib/api'
 import { RiskBadge, SectorIcon, SECTOR_LABEL, fmtINR } from './shared'
 import { Icon } from './icons'
 import { SaakhReport } from './SaakhReport'
+import { useT } from '../lib/i18n'
 
 function CashFlowChart({ p }: { p: Profile }) {
   const hist = p.history.map(h => ({ month: h.month.slice(2), net: h.net }))
@@ -45,6 +46,7 @@ function CashFlowChart({ p }: { p: Profile }) {
 }
 
 export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => void }) {
+  const { t, pick } = useT()
   const [p, setP] = useState<Profile | null>(null)
   const [showSaakh, setShowSaakh] = useState(false)
   const [note, setNote] = useState('')
@@ -73,7 +75,7 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
       <div className="rise flex flex-wrap items-center gap-3">
         <button onClick={onBack}
           className="flex items-center gap-1 rounded-lg border border-[var(--edge)] bg-[var(--surface)] px-2.5 py-1.5 text-sm text-[var(--text-dim)] transition hover:border-[var(--edge-lit)] hover:text-[var(--text)]">
-          <Icon.chevronLeft size={14} /> Back
+          <Icon.chevronLeft size={14} /> {t('back')}
         </button>
         <span className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--edge)] bg-[var(--deep)] text-[var(--sig-green)]">
           <SectorIcon sector={p.sector} size={20} />
@@ -81,7 +83,7 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
         <div>
           <h2 className="font-black leading-tight text-[var(--text)]">{p.name}</h2>
           <div className="mono text-[10px] uppercase tracking-wide text-[var(--text-faint)]">
-            {SECTOR_LABEL[p.sector]} · {p.village}, {p.block} · {p.members} members
+            {SECTOR_LABEL[p.sector]} · {p.village}, {p.block} · {p.members} {t('cMembers')}
             {p.loan && <> · EMI {fmtINR(p.loan.emi)}/mo · {p.loan.lender}</>}
           </div>
         </div>
@@ -89,14 +91,14 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
           {worstFlag ? <RiskBadge risk={worstFlag.level} /> : <RiskBadge risk="healthy" />}
           <button onClick={() => setShowSaakh(true)}
             className="flex items-center gap-1.5 rounded-lg border border-[rgba(45,212,160,.4)] bg-[rgba(45,212,160,.1)] px-3 py-2 text-xs font-bold text-[var(--sig-green)] transition hover:bg-[rgba(45,212,160,.18)] active:scale-95">
-            <Icon.report size={13} /> SAAKH Report
+            <Icon.report size={13} /> {t('pSaakhBtn')}
           </button>
         </div>
       </div>
 
       <section className="panel rise rise-1 scanning">
         <div className="panel-head">
-          <Icon.signal size={11} className="lit" /> Cash flow — 24-month history · 6-month forecast
+          <Icon.signal size={11} className="lit" /> {t('pChart')}
           {p.forecast && <span className="mono ml-auto normal-case tracking-normal text-[var(--text-faint)]">model: {p.forecast.model_tag}</span>}
         </div>
         <div className="p-3"><CashFlowChart p={p} /></div>
@@ -104,19 +106,19 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
 
       {p.flags.length > 0 && (
         <section className="panel rise rise-2">
-          <div className="panel-head"><Icon.alert size={11} className="text-[var(--sig-amber)]" /> Why this enterprise is flagged</div>
+          <div className="panel-head"><Icon.alert size={11} className="text-[var(--sig-amber)]" /> {t('pWhy')}</div>
           <div className="p-4">
             {p.flags.map(f => (
               <div key={f.id} className="mb-3 last:mb-0">
                 <div className="mb-1.5 flex items-center gap-2">
                   <RiskBadge risk={f.level} small />
-                  <span className="mono text-[10px] text-[var(--text-faint)]">opened {f.opened_at}</span>
+                  <span className="mono text-[10px] text-[var(--text-faint)]">{t('pOpened')} {f.opened_at}</span>
                 </div>
                 <ul className="stagger space-y-1.5">
                   {f.reasons.map((r, i) => (
                     <li key={i} className="flex gap-2 text-sm text-[var(--text-dim)]">
                       <Icon.arrowRight size={13} className="mt-1 shrink-0 text-[var(--sig-amber)]" />
-                      {r.text_en}
+                      {pick(r)}
                     </li>
                   ))}
                 </ul>
@@ -127,11 +129,11 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
       )}
 
       <section className="panel rise rise-3">
-        <div className="panel-head"><Icon.check size={11} className="lit" /> Log intervention</div>
+        <div className="panel-head"><Icon.check size={11} className="lit" /> {t('pLog')}</div>
         <div className="p-4">
           {logged && (
             <div className="fade mb-2 flex items-center gap-2 rounded-lg border border-[rgba(45,212,160,.3)] bg-[rgba(45,212,160,.08)] px-3 py-2 text-xs text-[var(--sig-green)]">
-              <Icon.check size={13} /> Logged — flag resolved. This becomes part of the enterprise's resilience history.
+              <Icon.check size={13} /> {t('pLogged')}
             </div>
           )}
           <div className="flex gap-2">
@@ -141,7 +143,7 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
               className="flex-1 rounded-lg border border-[var(--edge)] bg-[var(--deep)] px-3 py-2 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-faint)] focus:border-[var(--sig-green)]" />
             <button onClick={logIntervention}
               className="rounded-lg border border-[rgba(45,212,160,.4)] bg-[rgba(45,212,160,.12)] px-4 py-2 text-xs font-bold text-[var(--sig-green)] transition hover:bg-[rgba(45,212,160,.2)] active:scale-95">
-              Log
+              {t('pLogBtn')}
             </button>
           </div>
           {p.interventions.length > 0 && (
@@ -158,7 +160,7 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
       </section>
 
       <section className="panel rise rise-4">
-        <div className="panel-head"><Icon.database size={11} className="lit" /> Recent entries</div>
+        <div className="panel-head"><Icon.database size={11} className="lit" /> {t('pRecent')}</div>
         <div className="grid gap-0.5 p-4 pt-2 text-xs">
           {p.recent_transactions.slice(0, 10).map((t, i) => (
             <div key={i} className="flex items-center justify-between border-b border-[var(--edge)]/40 py-1.5 last:border-0">

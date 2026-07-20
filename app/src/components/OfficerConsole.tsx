@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { api, type DistrictRisk, type DistrictSummary, type EnterpriseRow, type LeadTime } from '../lib/api'
-import { AnimatedNumber, RiskBadge, SectorIcon, SECTOR_LABEL } from './shared'
+import { AnimatedNumber, SectorIcon, SECTOR_LABEL } from './shared'
 import { Icon } from './icons'
 import { EnterpriseProfile } from './EnterpriseProfile'
 import { CascadeOverlay, type CascadeResult } from './CascadeOverlay'
+import { useT, type StringKey } from '../lib/i18n'
 
 const LEVEL_COLOR: Record<string, string> = {
   alert: 'var(--sig-red)', warning: 'var(--sig-amber)',
-  watch: '#eab308', healthy: 'var(--sig-green)',
+  watch: 'var(--watch)', healthy: 'var(--sig-green)',
+}
+const RISK_KEY: Record<string, StringKey> = {
+  alert: 'rAlert', warning: 'rWarning', watch: 'rWatch', healthy: 'rHealthy',
 }
 const blockLevel = (levels: Record<string, number>) =>
   levels.alert ? 'alert' : levels.warning ? 'warning' : levels.watch ? 'watch' : 'healthy'
@@ -44,13 +48,14 @@ function Marquee({ d }: { d: DistrictRisk }) {
   )
 }
 
-/* ── qount-style stat band: huge numerals, thin rules ── */
+/* ── stat band: huge numerals, thin rules ── */
 function StatBand({ d, lead }: { d: DistrictRisk; lead: LeadTime | null }) {
+  const { t } = useT()
   const stats = [
-    { label: 'enterprises monitored', value: d.kpis.total, tone: 'var(--ink)' },
-    { label: 'alerts open', value: d.kpis.alerts, tone: d.kpis.alerts ? 'var(--sig-red)' : 'var(--ink)' },
-    { label: 'warnings open', value: d.kpis.warnings, tone: d.kpis.warnings ? 'var(--sig-amber)' : 'var(--ink)' },
-    { label: 'days median lead time', value: lead?.median_lead_days ?? 0, tone: 'var(--lime)' },
+    { label: t('cStatMonitored'), value: d.kpis.total, tone: 'var(--ink)' },
+    { label: t('cStatAlerts'), value: d.kpis.alerts, tone: d.kpis.alerts ? 'var(--sig-red)' : 'var(--ink)' },
+    { label: t('cStatWarnings'), value: d.kpis.warnings, tone: d.kpis.warnings ? 'var(--sig-amber)' : 'var(--ink)' },
+    { label: t('cStatLead'), value: lead?.median_lead_days ?? 0, tone: 'var(--lime)' },
   ]
   return (
     <motion.div className="grid grid-cols-2 divide-[var(--edge)] border-y border-[var(--edge)] md:grid-cols-4 md:divide-x"
@@ -68,10 +73,9 @@ function StatBand({ d, lead }: { d: DistrictRisk; lead: LeadTime | null }) {
   )
 }
 
-/* ── constellation map ── */
+/* ── constellation map (ring layout, any district) ── */
 function DistrictMap({ d, active, onSelectBlock }:
   { d: DistrictRisk; active: string | null; onSelectBlock: (b: string | null) => void }) {
-  // ring layout: works for any district's blocks
   const names = Object.keys(d.blocks)
   const POS: Record<string, { x: number; y: number }> = {}
   names.forEach((n, i) => {
@@ -122,7 +126,17 @@ function DistrictMap({ d, active, onSelectBlock }:
   )
 }
 
+/* ── section heading: the hero's two-tone voice, reused everywhere ── */
+function SectionTitle({ a, b, accent = 'var(--lime)' }: { a: string; b: string; accent?: string }) {
+  return (
+    <h3 className="display text-xl font-bold tracking-tight">
+      {a} <span className="serif-accent font-normal" style={{ color: accent }}>{b}</span>
+    </h3>
+  )
+}
+
 export function OfficerConsole() {
+  const { t, lang } = useT()
   const [rows, setRows] = useState<EnterpriseRow[]>([])
   const [districtName, setDistrictName] = useState('Wardha')
   const [allDistricts, setAllDistricts] = useState<DistrictSummary[]>([])
@@ -149,7 +163,7 @@ export function OfficerConsole() {
     setBusy(null)
   }
   const runReset = async () => {
-    setBusy('resetting')
+    setBusy(t('cReset'))
     await api.reset()
     await refresh()
     setSelected(null); setBusy(null)
@@ -168,17 +182,17 @@ export function OfficerConsole() {
       </AnimatePresence>
       {district && <Marquee d={district} />}
 
-      {/* ── editorial hero ── */}
-      <section className="mx-auto w-full max-w-[1560px] px-6 pb-8 pt-10 md:px-12">
+      {/* ── hero ── */}
+      <section className="mx-auto w-full max-w-[1560px] px-6 pb-6 pt-8 md:px-12">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <motion.div className="kicker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .1 }}>
-            Field officer console · {districtName} district
+            {t('cKicker')} · {districtName}
           </motion.div>
           <div className="flex flex-wrap gap-1.5">
             {allDistricts.map(d => (
               <button key={d.district} onClick={() => setDistrictName(d.district)}
                 className={`mono rounded-full border px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.15em] transition-all ${districtName === d.district
-                  ? 'border-[var(--lime)] bg-[rgba(201,242,75,.1)] text-[var(--lime)]'
+                  ? 'border-[var(--lime)] bg-[var(--accent-soft)] text-[var(--lime)]'
                   : 'border-[var(--edge)] text-[var(--ink-faint)] hover:border-[var(--edge-lit)] hover:text-[var(--ink-dim)]'}`}>
                 {d.district}
                 {(d.alerts ?? 0) > 0 && <span className="ml-1.5 text-[var(--sig-red)]">●</span>}
@@ -186,70 +200,74 @@ export function OfficerConsole() {
             ))}
           </div>
         </div>
-        <motion.h1 className="display mt-4 max-w-3xl text-[clamp(2.2rem,5.5vw,4rem)] font-bold leading-[1.02] tracking-tight text-[var(--ink)]"
-          initial="off" animate="on" variants={{ on: { transition: { staggerChildren: .09, delayChildren: .15 } } }}>
+        <motion.h1 key={districtName + lang} className="display mt-4 max-w-4xl text-[clamp(1.9rem,4vw,3.1rem)] font-bold leading-[1.08] tracking-tight text-[var(--ink)]"
+          initial="off" animate="on" variants={{ on: { transition: { staggerChildren: .09, delayChildren: .1 } } }}>
           {[
-            <span key="a">{districtName}\u2019s cash flows,{' '}</span>,
-            <span key="b" className="text-[var(--ink-faint)]">watched live.{' '}</span>,
-            <span key="c" className="serif-accent text-[var(--lime)]" style={{ textShadow: '0 0 30px var(--lime-glow)' }}>
-              {needAttention > 0 ? `${needAttention} need a visit this week.` : 'All quiet this week.'}
-            </span>,
+            <span key="a">{districtName}{t('cHlA')}{' '}</span>,
+            <span key="b" className="text-[var(--ink-faint)]">{t('cHlB')}{' '}</span>,
           ].map((chunk, i) => (
             <motion.span key={i} className="inline-block"
-              variants={{ off: { opacity: 0, y: 28, filter: 'blur(8px)' }, on: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: .6, ease: [.2, .8, .2, 1] } } }}>
+              variants={{ off: { opacity: 0, y: 24, filter: 'blur(6px)' }, on: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: .55, ease: [.2, .8, .2, 1] } } }}>
               {chunk}
             </motion.span>
           ))}
+          {lang === 'hi' && <br />}
+          <motion.span className="inline-block serif-accent font-normal text-[var(--lime)]" style={{ textShadow: '0 0 30px var(--lime-glow)' }}
+            variants={{ off: { opacity: 0, y: 24, filter: 'blur(6px)' }, on: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: .55, ease: [.2, .8, .2, 1] } } }}>
+            {needAttention > 0 ? `${needAttention} ${t('cNeedVisit')}` : t('cAllQuiet')}
+          </motion.span>
         </motion.h1>
-        {district && <div className="mt-8"><StatBand d={district} lead={lead} /></div>}
+        {district && <div className="mt-7"><StatBand d={district} lead={lead} /></div>}
       </section>
 
-      <div className="mx-auto grid w-full max-w-[1560px] gap-8 px-6 md:px-12 lg:grid-cols-[1fr_380px]">
-        {/* ── triage ── */}
+      <div className="mx-auto grid w-full max-w-[1560px] gap-10 px-6 md:px-12 lg:grid-cols-[1fr_360px]">
+        {/* ── triage: editorial ledger, not cards ── */}
         <div>
-          <div className="mb-4 flex items-center gap-3">
-            <span className="kicker">Triage — ranked by risk</span>
+          <div className="flex items-baseline gap-4">
+            <SectionTitle a={t('cTriageA')} b={t('cTriageB')} />
             {blockFilter && (
               <motion.button initial={{ opacity: 0, scale: .8 }} animate={{ opacity: 1, scale: 1 }}
                 onClick={() => setBlockFilter(null)}
-                className="mono rounded-full border border-[rgba(201,242,75,.4)] bg-[rgba(201,242,75,.08)] px-3 py-1 text-[9px] uppercase tracking-[.2em] text-[var(--lime)]">
-                {blockFilter} — clear ×
+                className="mono rounded-full border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-1 text-[9px] uppercase tracking-[.2em] text-[var(--lime)]">
+                {blockFilter} — {t('cClear')} ×
               </motion.button>
             )}
           </div>
 
           {!loaded ? (
-            <div className="space-y-2.5">
-              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-[72px]" />)}
+            <div className="mt-5 space-y-px">
+              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-[76px]" />)}
             </div>
           ) : (
-            <motion.div className="space-y-2.5" initial="off" animate="on"
-              variants={{ on: { transition: { staggerChildren: .045 } } }} key={blockFilter ?? 'all'}>
-              {visible.map(e => (
+            <motion.div className="mt-5 border-t border-[var(--edge)]" initial="off" animate="on"
+              variants={{ on: { transition: { staggerChildren: .04 } } }} key={blockFilter ?? 'all'}>
+              {visible.map((e, idx) => (
                 <motion.button key={e.id} layout onClick={() => setSelected(e.id)}
-                  variants={{ off: { opacity: 0, y: 20 }, on: { opacity: 1, y: 0, transition: spring } }}
-                  whileHover={{ x: 8, transition: { type: 'spring', stiffness: 500, damping: 28 } }}
-                  whileTap={{ scale: .985 }}
-                  className={`panel panel-hover rail-${e.risk} group flex w-full items-center gap-4 p-4 text-left`}>
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--edge)] bg-[var(--bg-2)] text-[var(--ink-dim)] transition-colors group-hover:border-[rgba(201,242,75,.35)] group-hover:text-[var(--lime)]">
-                    <SectorIcon sector={e.sector} size={18} />
+                  variants={{ off: { opacity: 0, y: 16 }, on: { opacity: 1, y: 0, transition: spring } }}
+                  className="group grid w-full grid-cols-[2.6rem_1fr_auto_1.6rem] items-center gap-3 border-b border-[var(--edge)] py-4 pr-1 text-left transition-colors duration-300 hover:bg-[var(--accent-soft)] md:grid-cols-[3.2rem_1.15fr_.85fr_7.5rem_1.8rem] md:gap-5">
+                  <span className="mono num text-sm text-[var(--ink-faint)] transition-colors group-hover:text-[var(--lime)]">
+                    {String(idx + 1).padStart(2, '0')}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2.5">
-                      <span className="display truncate text-[15px] font-bold text-[var(--ink)]">{e.name}</span>
-                      <RiskBadge risk={e.risk} small />
-                    </div>
-                    <div className="mono mt-0.5 text-[9px] uppercase tracking-[.18em] text-[var(--ink-faint)]">
-                      {SECTOR_LABEL[e.sector]} · {e.village} · {e.block}
+                  <div className="min-w-0">
+                    <div className="display truncate text-[17px] font-bold tracking-tight text-[var(--ink)] transition-transform duration-300 group-hover:translate-x-1">
+                      {e.name}
                     </div>
                     {e.top_reason && (
-                      <div className="mt-1 flex items-center gap-1.5 truncate text-xs text-[var(--ink-dim)]">
+                      <div className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-[var(--ink-dim)]">
                         <Icon.arrowRight size={10} className="shrink-0 text-[var(--ink-faint)]" />
-                        {e.top_reason.text_en}
+                        {lang === 'hi' ? e.top_reason.text_hi : e.top_reason.text_en}
                       </div>
                     )}
                   </div>
-                  <span className="translate-x-1 text-[var(--ink-faint)] opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:text-[var(--lime)] group-hover:opacity-100">
+                  <div className="mono hidden items-center gap-2 text-[9.5px] uppercase tracking-[.16em] text-[var(--ink-faint)] md:flex">
+                    <SectorIcon sector={e.sector} size={13} className="text-[var(--ink-dim)]" />
+                    <span className="truncate">{SECTOR_LABEL[e.sector]} · {e.village}</span>
+                  </div>
+                  <span className="serif-accent justify-self-end text-lg md:text-xl"
+                    style={{ color: LEVEL_COLOR[e.risk] }}>
+                    {t(RISK_KEY[e.risk])}
+                  </span>
+                  <span className="translate-x-0 text-[var(--ink-faint)] opacity-0 transition-all duration-300 group-hover:translate-x-1 group-hover:text-[var(--lime)] group-hover:opacity-100">
                     <Icon.arrowRight size={16} />
                   </span>
                 </motion.button>
@@ -258,66 +276,64 @@ export function OfficerConsole() {
           )}
         </div>
 
-        {/* ── rail ── */}
-        <div className="space-y-5">
+        {/* ── rail: rule-separated editorial sections, no widget boxes ── */}
+        <div className="space-y-10">
           {district && (
-            <motion.section className="panel panel-lit" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .2 }}>
-              <div className="panel-head"><Icon.map size={11} className="lit" /> District constellation</div>
-              <div className="p-4">
-                <DistrictMap d={district} active={blockFilter} onSelectBlock={setBlockFilter} />
-              </div>
+            <motion.section initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .15 }}>
+              <SectionTitle a={t('cConstA')} b={t('cConstB')} />
+              <div className="mt-2"><DistrictMap d={district} active={blockFilter} onSelectBlock={setBlockFilter} /></div>
             </motion.section>
           )}
 
           {district && district.bulletins.length > 0 && (
-            <motion.section className="panel" style={{ borderColor: 'rgba(248,113,113,.3)' }}
-              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .3 }}>
-              <div className="panel-head" style={{ color: 'var(--sig-red)' }}>
-                <Icon.signal size={11} /> Cluster bulletins
-              </div>
-              <div className="space-y-2.5 p-3.5">
+            <motion.section initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .25 }}>
+              <SectionTitle a={t('cBullA')} b={t('cBullB')} accent="var(--sig-red)" />
+              <div className="mt-3 border-t border-[var(--edge)]">
                 {district.bulletins.map((b, i) => (
-                  <motion.div key={i} className="rounded-xl border border-[rgba(248,113,113,.2)] bg-[rgba(248,113,113,.05)] p-3"
-                    initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: .35 + i * .1 }}>
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--ink)]">
-                      <SectorIcon sector={b.sector} size={13} /> {SECTOR_LABEL[b.sector]}
-                      <span className="mono num ml-auto rounded-md bg-[rgba(248,113,113,.14)] px-1.5 py-0.5 text-[8.5px] font-bold tracking-wider text-[var(--sig-red)]">
-                        {b.stressed_units}/{b.exposed_units} STRESSED
+                  <motion.div key={i} className="border-b border-[var(--edge)] py-3.5"
+                    initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: .3 + i * .1 }}>
+                    <div className="flex items-center gap-2 text-sm font-bold text-[var(--ink)]">
+                      <SectorIcon sector={b.sector} size={14} className="text-[var(--sig-red)]" />
+                      {SECTOR_LABEL[b.sector]}
+                      <span className="mono num ml-auto text-[9px] font-bold tracking-[.14em] text-[var(--sig-red)]">
+                        {b.stressed_units}/{b.exposed_units} {t('cStressed')}
                       </span>
                     </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--ink-dim)]">{b.text}</p>
+                    <p className="mt-1.5 text-[11.5px] leading-relaxed text-[var(--ink-dim)]">{b.text}</p>
                   </motion.div>
                 ))}
               </div>
             </motion.section>
           )}
 
-          <motion.section className="panel" style={{ borderStyle: 'dashed' }}
-            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .4 }}>
-            <div className="panel-head">Scenario simulator · demo</div>
-            <div className="flex flex-wrap gap-2 p-3.5">
+          <motion.section initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .35 }}>
+            <SectionTitle a={t('cSimA')} b={t('cSimB')} />
+            <p className="mt-1.5 max-w-[38ch] text-xs leading-relaxed text-[var(--ink-dim)]">{t('cSimSub')}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
               {[
-                { key: 'feed_spike', label: 'Feed-price spike', color: 'var(--sig-amber)', bg: 'rgba(251,191,36' },
-                { key: 'monsoon_deficit', label: 'Monsoon deficit', color: 'var(--sig-blue)', bg: 'rgba(96,165,250' },
+                { key: 'feed_spike', label: t('cFeed'), color: 'var(--sig-amber)', border: 'var(--amber-border)', soft: 'var(--amber-soft)' },
+                { key: 'monsoon_deficit', label: t('cMonsoon'), color: 'var(--sig-blue)', border: 'var(--blue-border)', soft: 'var(--blue-soft)' },
               ].map(s => (
                 <motion.button key={s.key} disabled={!!busy}
                   whileHover={{ scale: 1.04 }} whileTap={{ scale: .95 }}
                   onClick={() => runShock(s.key, s.label)}
-                  className="flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-colors disabled:opacity-30"
-                  style={{ color: s.color, borderColor: `${s.bg},.4)`, background: `${s.bg},.08)` }}>
+                  className="flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-bold transition-colors disabled:opacity-30"
+                  style={{ color: s.color, borderColor: s.border }}
+                  onMouseEnter={ev => (ev.currentTarget.style.background = s.soft)}
+                  onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}>
                   <Icon.play size={11} /> {s.label}
                 </motion.button>
               ))}
               <motion.button disabled={!!busy} whileHover={{ scale: 1.04 }} whileTap={{ scale: .95 }}
                 onClick={runReset}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--edge-lit)] bg-[var(--surface-2)] px-3.5 py-2 text-xs font-bold text-[var(--ink-dim)] transition-colors hover:text-[var(--ink)] disabled:opacity-30">
-                <Icon.refresh size={11} /> Reset
+                className="flex items-center gap-2 rounded-full border border-[var(--edge-lit)] px-4 py-2.5 text-xs font-bold text-[var(--ink-dim)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)] disabled:opacity-30">
+                <Icon.refresh size={11} /> {t('cReset')}
               </motion.button>
             </div>
             {busy && (
-              <div className="mono flex items-center gap-2 px-4 pb-3.5 text-[9px] uppercase tracking-[.2em] text-[var(--ink-faint)]">
+              <div className="mono mt-3 flex items-center gap-2 text-[9px] uppercase tracking-[.2em] text-[var(--ink-faint)]">
                 <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--edge)] border-t-[var(--lime)]" />
-                {busy} — running cascade
+                {busy} — {t('cRunning')}
               </div>
             )}
           </motion.section>
