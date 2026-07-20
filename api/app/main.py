@@ -31,6 +31,15 @@ class TxnIn(BaseModel):
     source: str = "manual"
 
 
+class EnterpriseIn(BaseModel):
+    name: str
+    sector: str
+    village: str
+    block: str
+    district: str = "Wardha"
+    members: int = 1
+
+
 class InterventionIn(BaseModel):
     enterprise_id: int
     flag_id: int | None = None
@@ -51,6 +60,28 @@ def _flags_with_reasons(con, enterprise_id: int) -> list[dict]:
             " WHERE flag_id=?", (f["id"],))]
         flags.append({**dict(f), "reasons": reasons, "suggestions": suggestions})
     return flags
+
+
+@app.post("/enterprises", status_code=201)
+def create_enterprise(e: EnterpriseIn):
+    """Onboard a new (thin-file) enterprise. It gets a forecast immediately
+    via the sector prior - the cold-start answer, live from day zero."""
+    valid = {"dairy", "poultry", "food_processing", "handicrafts", "rural_retail"}
+    if e.sector not in valid:
+        raise HTTPException(400, f"sector must be one of {sorted(valid)}")
+    con = db.connect()
+    cur = con.execute(
+        "INSERT INTO enterprises(name, sector, village, block, district,"
+        " members, started_at) VALUES (?,?,?,?,?,?,?)",
+        (e.name, e.sector, e.village, e.block, e.district, e.members,
+         datetime.now().date().isoformat()))
+    eid = cur.lastrowid
+    con.commit()
+    from .engine import forecast_enterprise
+    fc = forecast_enterprise(con, eid, e.sector, active_signals=[])
+    con.close()
+    return {"id": eid, "forecast_model": fc.get("model_tag", "sector_prior_v1")
+            if fc else None, "note": "forecast available from day zero via sector prior"}
 
 
 @app.get("/enterprises")

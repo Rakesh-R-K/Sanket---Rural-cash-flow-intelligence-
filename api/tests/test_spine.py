@@ -76,6 +76,20 @@ def test_offline_sync_batch(client):
     assert r.json()["synced"] == 1
 
 
+def test_cold_start_enterprise_gets_sector_prior_forecast(client):
+    """The thin-file case the problem statement centres on: a brand-new
+    enterprise must get a forecast from day zero via the sector prior."""
+    r = client.post("/enterprises", json=dict(
+        name="Navjeevan SHG (Radha)", sector="dairy",
+        village="Talegaon", block="Arvi", members=11))
+    assert r.status_code == 201
+    body = r.json()
+    assert body["forecast_model"] and body["forecast_model"].startswith("sector_prior")
+    p = client.get(f"/enterprises/{body['id']}").json()
+    assert p["forecast"] and len(p["forecast"]["points"]) == 6
+    assert p["forecast"]["model_tag"].startswith("sector_prior")
+
+
 def test_reset_restores_pristine_state(client):
     r = client.post("/admin/reset").json()
     assert r["enterprises"] == 50 and r["seconds"] < 60

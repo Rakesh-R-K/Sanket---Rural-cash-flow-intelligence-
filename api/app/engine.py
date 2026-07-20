@@ -131,11 +131,36 @@ def forecast_enterprise(con, enterprise_id: int, sector: str,
     Interpretable by construction: forecast(month m) =
       0.55 * same-month-last-year + 0.45 * recent-3mo-mean, damped-trended,
       then cost/income shifted by active-signal exposure for this sector.
+
+    Cold start (<13 months of records - the thin-file case the problem
+    statement centres on): fall back to the SECTOR PRIOR - the median
+    monthly income/expense profile of same-sector peers in the district,
+    scaled to this enterprise's observed level. Tagged sector_prior_v1 so
+    the provenance is visible everywhere the forecast appears.
     """
     g = monthly_net(con, enterprise_id)
-    if len(g) < 13:
-        return {}
-    inc, exp = g["income"].to_numpy(), (g["expense"] + g["loan_repayment"]).to_numpy()
+    model_tag = "seasonal_blend_v1"
+    if len(g) >= 13:
+        inc, exp = g["income"].to_numpy(), (g["expense"] + g["loan_repayment"]).to_numpy()
+    else:
+        peers = [r["id"] for r in con.execute(
+            "SELECT id FROM enterprises WHERE sector=? AND id!=?",
+            (sector, enterprise_id))]
+        profiles = []
+        for pid in peers:
+            pg = monthly_net(con, pid)
+            if len(pg) >= 13:
+                profiles.append((pg["income"].to_numpy()[-13:],
+                                 (pg["expense"] + pg["loan_repayment"]).to_numpy()[-13:]))
+        if not profiles:
+            return {}
+        inc = np.median([p[0] for p in profiles], axis=0)
+        exp = np.median([p[1] for p in profiles], axis=0)
+        # scale the peer profile to this enterprise's observed level, if any
+        if len(g) >= 1 and g["income"].mean() > 0:
+            ratio = float(np.clip(g["income"].mean() / (inc.mean() + 1e-9), 0.3, 3.0))
+            inc, exp = inc * ratio, exp * ratio
+        model_tag = "sector_prior_v1"
 
     def project(series: np.ndarray) -> np.ndarray:
         recent = series[-3:].mean()
@@ -178,9 +203,10 @@ def forecast_enterprise(con, enterprise_id: int, sector: str,
         " points_json, band_json, model_tag) VALUES (?,?,?,?,?,?)",
         (enterprise_id, END_DATE.isoformat(), horizon, json.dumps(points),
          json.dumps(band),
-         f"seasonal_blend_v1+{len(adjustments)}adj"))
+         f"{model_tag}+{len(adjustments)}adj"))
     con.commit()
-    return {"points": points, "band": band, "adjustments": adjustments}
+    return {"points": points, "band": band, "adjustments": adjustments,
+            "model_tag": model_tag}
 
 
 def run_cascade(con, asof: date | None = None) -> dict:
