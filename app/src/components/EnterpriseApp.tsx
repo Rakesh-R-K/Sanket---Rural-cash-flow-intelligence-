@@ -82,8 +82,8 @@ function HealthCard({ p }: { p: Profile }) {
   const tight = p.forecast?.points.filter(pt => pt.net < 0) ?? []
   return (
     <div className="stagger space-y-3 p-4">
-      <div className="card p-4">
-        <div className="panel-title">{t('healthCard')}</div>
+      <div className="day-card p-4">
+        <div className="day-title">{t('healthCard')}</div>
         <div className="mt-2 flex justify-between">
           <div>
             <div className="flex items-center gap-1 text-xs text-stone-400">
@@ -102,8 +102,8 @@ function HealthCard({ p }: { p: Profile }) {
         </div>
       </div>
 
-      <div className={`card p-4 ${tight.length ? '!border-amber-200 !bg-amber-50/60' : '!border-emerald-200 !bg-emerald-50/60'}`}>
-        <div className="panel-title">{t('nextMonths')}</div>
+      <div className={`day-card p-4 ${tight.length ? '!border-amber-200 !bg-amber-50/60' : '!border-emerald-200 !bg-emerald-50/60'}`}>
+        <div className="day-title">{t('nextMonths')}</div>
         <p className="mt-1.5 flex items-center gap-1.5 text-sm font-medium">
           {tight.length
             ? <><Icon.warning size={15} className="text-amber-600" /> {t('tightMonths')}: {tight.map(m => m.month.slice(5)).join(', ')}</>
@@ -136,7 +136,7 @@ function Alerts({ p, onAction }: { p: Profile; onAction: () => void }) {
   return (
     <div className="stagger space-y-3 p-4">
       {flags.map(f => (
-        <div key={f.id} className="card !border-amber-200 p-4">
+        <div key={f.id} className="day-card !border-amber-200 p-4">
           <div className="mb-2 flex items-center gap-1.5 text-sm font-bold text-amber-800">
             <Icon.warning size={15} /> {f.level.toUpperCase()}
           </div>
@@ -150,7 +150,7 @@ function Alerts({ p, onAction }: { p: Profile; onAction: () => void }) {
           </ul>
           {f.suggestions.length > 0 && (
             <div className="mt-3 border-t border-stone-100 pt-2.5">
-              <div className="panel-title mb-1.5">{t('suggestions')}</div>
+              <div className="day-title mb-1.5">{t('suggestions')}</div>
               {f.suggestions.map(s => (
                 <div key={s.id} className="mb-2 flex items-start gap-2 last:mb-0">
                   <p className="flex-1 text-sm text-stone-700">{pick(s)}</p>
@@ -193,7 +193,7 @@ export function EnterpriseApp() {
   ]
 
   return (
-    <div className="mx-auto flex min-h-[82vh] max-w-md flex-col overflow-hidden rounded-3xl border border-stone-200 bg-[#f7f6f1] shadow-xl">
+    <div className="daylight mx-auto flex min-h-[82vh] max-w-md flex-col">
       {/* status bar */}
       <div className="flex items-center justify-between bg-gradient-to-r from-green-900 to-green-800 px-4 py-3 text-white">
         <div>
@@ -219,7 +219,7 @@ export function EnterpriseApp() {
                 <HealthCard p={p} />
                 <div className="px-4 pb-4">
                   <button onClick={() => setTab('saakh')}
-                    className="card card-hover flex w-full items-center gap-3 p-3.5 text-left">
+                    className="day-card day-card-hover flex w-full items-center gap-3 p-3.5 text-left">
                     <span className="grid h-10 w-10 place-items-center rounded-xl bg-green-100 text-green-800">
                       <Icon.report size={18} />
                     </span>

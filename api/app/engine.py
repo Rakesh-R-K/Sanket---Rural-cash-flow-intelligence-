@@ -17,6 +17,7 @@ able to defend every flag to the enterprise it concerns.
 from __future__ import annotations
 
 import json
+import math
 from datetime import date, timedelta
 
 import numpy as np
@@ -188,7 +189,15 @@ def forecast_enterprise(con, enterprise_id: int, sector: str,
             f_inc = f_inc * (1 - cut)
             adjustments.append((s, f"income -{cut*100:.0f}%"))
 
-    resid = np.std(inc[-12:] - inc[-12:].mean()) + np.std(exp[-12:] - exp[-12:].mean())
+    # Band from NET-flow residuals vs seasonal expectation (tighter and more
+    # honest than summing income/expense spreads, which ignores their
+    # co-movement: high-income months are usually high-expense months too).
+    net_hist = inc - exp
+    if len(net_hist) >= 13:
+        seasonal_resid = net_hist[12:] - net_hist[:-12]
+        resid = float(np.std(seasonal_resid)) / math.sqrt(2)
+    else:
+        resid = float(np.std(net_hist - net_hist.mean()))
     months = [(pd.Period(END_DATE.strftime("%Y-%m")) + h).strftime("%Y-%m")
               for h in range(1, horizon + 1)]
     net = f_inc - f_exp
@@ -294,4 +303,11 @@ def run_cascade(con, asof: date | None = None) -> dict:
         flagged += 1
 
     con.commit()
-    return {"signals": signals, "enterprises": len(enterprises), "flagged": flagged}
+    # Structured breakdown so the UI can narrate the cascade as it happened
+    by_level = {r["level"]: r["c"] for r in con.execute(
+        "SELECT level, COUNT(*) c FROM flags GROUP BY level")}
+    by_sector = {r["sector"]: r["c"] for r in con.execute(
+        "SELECT e.sector, COUNT(DISTINCT f.enterprise_id) c FROM flags f"
+        " JOIN enterprises e ON e.id=f.enterprise_id GROUP BY e.sector")}
+    return {"signals": signals, "enterprises": len(enterprises),
+            "flagged": flagged, "by_level": by_level, "by_sector": by_sector}

@@ -19,22 +19,26 @@ function CashFlowChart({ p }: { p: Profile }) {
     })) : []),
   ]
   return (
-    <ResponsiveContainer width="100%" height={230}>
+    <ResponsiveContainer width="100%" height={240}>
       <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 4 }}>
-        <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#a8a29e' }} interval={2}
-          axisLine={{ stroke: '#e7e5e0' }} tickLine={false} />
-        <YAxis tick={{ fontSize: 10, fill: '#a8a29e' }} width={48} axisLine={false} tickLine={false}
+        <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--text-faint)' }} interval={2}
+          axisLine={{ stroke: 'var(--edge)' }} tickLine={false} />
+        <YAxis tick={{ fontSize: 10, fill: 'var(--text-faint)' }} width={48} axisLine={false} tickLine={false}
           tickFormatter={(v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
         <Tooltip
-          contentStyle={{ borderRadius: 10, border: '1px solid #e7e5e0', fontSize: 12, boxShadow: '0 8px 24px -8px rgb(0 0 0 / .15)' }}
+          contentStyle={{ background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--edge-lit)', fontSize: 12, color: 'var(--text)' }}
+          labelStyle={{ color: 'var(--text-dim)' }}
           formatter={(v) => fmtINR(Number(v))} />
-        <ReferenceLine y={0} stroke="#d6d3cd" strokeDasharray="4 4" />
-        <Area dataKey="hi" stroke="none" fill="#86efac" fillOpacity={0.3} isAnimationActive animationDuration={800} />
-        <Area dataKey="lo" stroke="none" fill="#f7f6f1" fillOpacity={1} isAnimationActive animationDuration={800} />
-        <Line dataKey="net" stroke="#166534" dot={false} strokeWidth={2.2} name="Net (history)"
-          isAnimationActive animationDuration={900} />
-        <Line dataKey="forecast" stroke="#d97706" strokeDasharray="6 3" dot={{ r: 2.5, fill: '#d97706' }}
-          strokeWidth={2.2} name="Forecast" isAnimationActive animationDuration={900} animationBegin={400} />
+        <ReferenceLine y={0} stroke="var(--edge-lit)" strokeDasharray="4 4" />
+        <Area dataKey="hi" stroke="none" fill="var(--sig-green)" fillOpacity={0.08} isAnimationActive animationDuration={800} />
+        <Area dataKey="lo" stroke="none" fill="var(--void)" fillOpacity={1} isAnimationActive animationDuration={800} />
+        <Line dataKey="net" stroke="var(--sig-green)" dot={false} strokeWidth={2}
+          name="Net (history)" isAnimationActive animationDuration={1000}
+          style={{ filter: 'drop-shadow(0 0 4px var(--sig-green-glow))' }} />
+        <Line dataKey="forecast" stroke="var(--sig-amber)" strokeDasharray="6 3"
+          dot={{ r: 2.5, fill: 'var(--sig-amber)' }} strokeWidth={2}
+          name="Forecast" isAnimationActive animationDuration={900} animationBegin={500}
+          style={{ filter: 'drop-shadow(0 0 4px var(--sig-amber-glow))' }} />
       </ComposedChart>
     </ResponsiveContainer>
   )
@@ -68,15 +72,15 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
     <div className="mx-auto max-w-4xl space-y-4 p-4">
       <div className="rise flex flex-wrap items-center gap-3">
         <button onClick={onBack}
-          className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-600 transition hover:border-stone-300">
+          className="flex items-center gap-1 rounded-lg border border-[var(--edge)] bg-[var(--surface)] px-2.5 py-1.5 text-sm text-[var(--text-dim)] transition hover:border-[var(--edge-lit)] hover:text-[var(--text)]">
           <Icon.chevronLeft size={14} /> Back
         </button>
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-green-50 text-green-800">
+        <span className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--edge)] bg-[var(--deep)] text-[var(--sig-green)]">
           <SectorIcon sector={p.sector} size={20} />
         </span>
         <div>
-          <h2 className="font-bold leading-tight">{p.name}</h2>
-          <div className="text-xs text-stone-400">
+          <h2 className="font-black leading-tight text-[var(--text)]">{p.name}</h2>
+          <div className="mono text-[10px] uppercase tracking-wide text-[var(--text-faint)]">
             {SECTOR_LABEL[p.sector]} · {p.village}, {p.block} · {p.members} members
             {p.loan && <> · EMI {fmtINR(p.loan.emi)}/mo · {p.loan.lender}</>}
           </div>
@@ -84,36 +88,34 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
         <div className="ml-auto flex items-center gap-2">
           {worstFlag ? <RiskBadge risk={worstFlag.level} /> : <RiskBadge risk="healthy" />}
           <button onClick={() => setShowSaakh(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-green-800 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-green-900 active:scale-95">
+            className="flex items-center gap-1.5 rounded-lg border border-[rgba(45,212,160,.4)] bg-[rgba(45,212,160,.1)] px-3 py-2 text-xs font-bold text-[var(--sig-green)] transition hover:bg-[rgba(45,212,160,.18)] active:scale-95">
             <Icon.report size={13} /> SAAKH Report
           </button>
         </div>
       </div>
 
-      <section className="card rise rise-1 overflow-hidden">
-        <div className="flex items-baseline justify-between border-b border-stone-100 px-4 py-2.5">
-          <div className="panel-title">Cash flow — 24-month history · 6-month forecast</div>
-          {p.forecast && <span className="text-[10px] text-stone-300">model: {p.forecast.model_tag}</span>}
+      <section className="panel rise rise-1 scanning">
+        <div className="panel-head">
+          <Icon.signal size={11} className="lit" /> Cash flow — 24-month history · 6-month forecast
+          {p.forecast && <span className="mono ml-auto normal-case tracking-normal text-[var(--text-faint)]">model: {p.forecast.model_tag}</span>}
         </div>
         <div className="p-3"><CashFlowChart p={p} /></div>
       </section>
 
       {p.flags.length > 0 && (
-        <section className="card rise rise-2 overflow-hidden">
-          <div className="border-b border-stone-100 px-4 py-2.5">
-            <div className="panel-title">Why this enterprise is flagged</div>
-          </div>
+        <section className="panel rise rise-2">
+          <div className="panel-head"><Icon.alert size={11} className="text-[var(--sig-amber)]" /> Why this enterprise is flagged</div>
           <div className="p-4">
             {p.flags.map(f => (
               <div key={f.id} className="mb-3 last:mb-0">
                 <div className="mb-1.5 flex items-center gap-2">
                   <RiskBadge risk={f.level} small />
-                  <span className="text-xs text-stone-400">opened {f.opened_at}</span>
+                  <span className="mono text-[10px] text-[var(--text-faint)]">opened {f.opened_at}</span>
                 </div>
                 <ul className="stagger space-y-1.5">
                   {f.reasons.map((r, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-stone-700">
-                      <Icon.arrowRight size={13} className="mt-1 shrink-0 text-amber-500" />
+                    <li key={i} className="flex gap-2 text-sm text-[var(--text-dim)]">
+                      <Icon.arrowRight size={13} className="mt-1 shrink-0 text-[var(--sig-amber)]" />
                       {r.text_en}
                     </li>
                   ))}
@@ -124,13 +126,11 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
         </section>
       )}
 
-      <section className="card rise rise-3 overflow-hidden">
-        <div className="border-b border-stone-100 px-4 py-2.5">
-          <div className="panel-title">Log intervention</div>
-        </div>
+      <section className="panel rise rise-3">
+        <div className="panel-head"><Icon.check size={11} className="lit" /> Log intervention</div>
         <div className="p-4">
           {logged && (
-            <div className="fade mb-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            <div className="fade mb-2 flex items-center gap-2 rounded-lg border border-[rgba(45,212,160,.3)] bg-[rgba(45,212,160,.08)] px-3 py-2 text-xs text-[var(--sig-green)]">
               <Icon.check size={13} /> Logged — flag resolved. This becomes part of the enterprise's resilience history.
             </div>
           )}
@@ -138,17 +138,17 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
             <input value={note} onChange={e => setNote(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && logIntervention()}
               placeholder="e.g. Visited; advised feed pre-purchase and EMI restructuring"
-              className="flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100" />
+              className="flex-1 rounded-lg border border-[var(--edge)] bg-[var(--deep)] px-3 py-2 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-faint)] focus:border-[var(--sig-green)]" />
             <button onClick={logIntervention}
-              className="rounded-lg bg-green-800 px-4 py-2 text-xs font-semibold text-white transition hover:bg-green-900 active:scale-95">
+              className="rounded-lg border border-[rgba(45,212,160,.4)] bg-[rgba(45,212,160,.12)] px-4 py-2 text-xs font-bold text-[var(--sig-green)] transition hover:bg-[rgba(45,212,160,.2)] active:scale-95">
               Log
             </button>
           </div>
           {p.interventions.length > 0 && (
-            <ul className="mt-3 space-y-1 text-xs text-stone-500">
+            <ul className="mt-3 space-y-1 text-xs text-[var(--text-dim)]">
               {p.interventions.map((iv, i) => (
                 <li key={i} className="flex gap-1.5">
-                  <Icon.check size={12} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <Icon.check size={12} className="mt-0.5 shrink-0 text-[var(--sig-green)]" />
                   {iv.logged_at.slice(0, 10)} — {iv.officer_note}
                 </li>
               ))}
@@ -157,18 +157,18 @@ export function EnterpriseProfile({ id, onBack }: { id: number; onBack: () => vo
         </div>
       </section>
 
-      <section className="card rise rise-4 overflow-hidden">
-        <div className="border-b border-stone-100 px-4 py-2.5">
-          <div className="panel-title">Recent entries</div>
-        </div>
+      <section className="panel rise rise-4">
+        <div className="panel-head"><Icon.database size={11} className="lit" /> Recent entries</div>
         <div className="grid gap-0.5 p-4 pt-2 text-xs">
           {p.recent_transactions.slice(0, 10).map((t, i) => (
-            <div key={i} className="flex items-center justify-between border-b border-stone-50 py-1.5 last:border-0">
-              <span className="flex items-center gap-2 text-stone-500">
-                {t.type === 'income' ? <Icon.income size={12} className="text-emerald-600" /> : <Icon.expense size={12} className="text-stone-400" />}
-                {t.entered_at} · {t.note || t.type}
+            <div key={i} className="flex items-center justify-between border-b border-[var(--edge)]/40 py-1.5 last:border-0">
+              <span className="flex items-center gap-2 text-[var(--text-dim)]">
+                {t.type === 'income'
+                  ? <Icon.income size={12} className="text-[var(--sig-green)]" />
+                  : <Icon.expense size={12} className="text-[var(--text-faint)]" />}
+                <span className="mono text-[10px]">{t.entered_at}</span> {t.note || t.type}
               </span>
-              <span className={`num font-semibold ${t.type === 'income' ? 'text-emerald-700' : 'text-stone-600'}`}>
+              <span className={`mono num font-bold ${t.type === 'income' ? 'text-[var(--sig-green)]' : 'text-[var(--text-dim)]'}`}>
                 {t.type === 'income' ? '+' : '−'}{fmtINR(t.amount)}
               </span>
             </div>

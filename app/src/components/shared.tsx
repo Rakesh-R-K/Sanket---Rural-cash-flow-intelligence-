@@ -3,17 +3,17 @@ import type { Risk } from '../lib/api'
 import { Icon } from './icons'
 
 const RISK_META: Record<Risk, { label: string; cls: string; icon: keyof typeof Icon }> = {
-  alert: { label: 'Alert', cls: 'risk-alert', icon: 'alert' },
-  warning: { label: 'Warning', cls: 'risk-warning', icon: 'warning' },
-  watch: { label: 'Watch', cls: 'risk-watch', icon: 'watch' },
-  healthy: { label: 'Healthy', cls: 'risk-healthy', icon: 'healthy' },
+  alert: { label: 'Alert', cls: 'chip-alert', icon: 'alert' },
+  warning: { label: 'Warning', cls: 'chip-warning', icon: 'warning' },
+  watch: { label: 'Watch', cls: 'chip-watch', icon: 'watch' },
+  healthy: { label: 'Healthy', cls: 'chip-healthy', icon: 'healthy' },
 }
 
 export function RiskBadge({ risk, small }: { risk: Risk; small?: boolean }) {
   const m = RISK_META[risk]
   const I = Icon[m.icon]
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border font-semibold ${m.cls} ${small ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'}`}>
+    <span className={`risk-chip ${m.cls} ${small ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'}`}>
       <I size={small ? 11 : 13} />{m.label}
     </span>
   )

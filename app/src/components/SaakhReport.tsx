@@ -25,7 +25,7 @@ function Spark({ values }: { values: number[] }) {
 export function SaakhReport({ id, onBack }: { id: number; onBack: () => void }) {
   const [d, setD] = useState<SaakhData | null>(null)
   useEffect(() => { void api.saakh(id).then(setD) }, [id])
-  if (!d) return <div className="p-8 text-sm text-stone-500">Preparing report…</div>
+  if (!d) return <div className="p-8 text-sm text-[var(--text-dim)]">Preparing report…</div>
 
   const nets = d.history.map(h => h.net)
   const positiveMonths = d.history.filter(h => h.net > 0).length
@@ -36,7 +36,7 @@ export function SaakhReport({ id, onBack }: { id: number; onBack: () => void }) 
     <div className="mx-auto max-w-3xl p-4">
       <div className="no-print rise mb-3 flex gap-2">
         <button onClick={onBack}
-          className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-600 transition hover:border-stone-300">
+          className="flex items-center gap-1 rounded-lg border border-[var(--edge)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text-dim)] transition hover:border-[var(--edge-lit)] hover:text-[var(--text)]">
           <Icon.chevronLeft size={14} /> Back
         </button>
         <button onClick={() => window.print()}
@@ -45,7 +45,7 @@ export function SaakhReport({ id, onBack }: { id: number; onBack: () => void }) 
         </button>
       </div>
 
-      <div id="saakh-report" className="card rise rise-1 !rounded-lg border-2 !border-green-900 p-8">
+      <div id="saakh-report" className="paper rise rise-1 border-2 !border-green-900 p-8">
         {/* header */}
         <div className="flex items-start justify-between border-b-4 border-green-900 pb-4">
           <div>
