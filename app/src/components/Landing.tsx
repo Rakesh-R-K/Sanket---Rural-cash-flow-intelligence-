@@ -218,10 +218,19 @@ function PinnedSteps() {
   )
 }
 
+/* scroll segment with offsets clamped to [0,1] and strictly increasing —
+   Chrome's ScrollTimeline rejects anything outside that contract */
+function seg(index: number, n: number, spread: number): [number, number, number] {
+  const mid = (index + .5) / n
+  const lo = Math.max(0, mid - spread)
+  const hi = Math.min(1, mid + spread)
+  const m = Math.min(Math.max(mid, lo + 1e-3), hi - 1e-3)
+  return [lo, m, hi]
+}
+
 function StepRow({ step, index, progress }: { step: typeof STEPS[number]; index: number; progress: MotionValue<number> }) {
   const n = STEPS.length
-  const mid = (index + .5) / n
-  const active = useTransform(progress, [mid - .5 / n, mid, mid + .5 / n], [0, 1, index === n - 1 ? 1 : 0])
+  const active = useTransform(progress, seg(index, n, .5 / n), [0, 1, index === n - 1 ? 1 : 0])
   const opacity = useTransform(active, [0, 1], [.25, 1])
   const x = useTransform(active, [0, 1], [0, 18])
   const I = Icon[step.icon]
@@ -242,8 +251,7 @@ function StepRow({ step, index, progress }: { step: typeof STEPS[number]; index:
 
 function StepArt({ step, index, progress }: { step: typeof STEPS[number]; index: number; progress: MotionValue<number> }) {
   const n = STEPS.length
-  const mid = (index + .5) / n
-  const active = useTransform(progress, [mid - .55 / n, mid, mid + .55 / n], [0, 1, index === n - 1 ? 1 : 0])
+  const active = useTransform(progress, seg(index, n, .55 / n), [0, 1, index === n - 1 ? 1 : 0])
   const scale = useTransform(active, [0, 1], [.8, 1])
   const rotate = useTransform(active, [0, 1], [8, 0])
   const I = Icon[step.icon]
