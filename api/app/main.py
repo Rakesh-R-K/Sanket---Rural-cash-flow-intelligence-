@@ -62,6 +62,26 @@ def _flags_with_reasons(con, enterprise_id: int) -> list[dict]:
     return flags
 
 
+@app.get("/districts")
+def list_districts():
+    """District switcher payload: per-district KPIs for the officer console."""
+    con = db.connect()
+    out = []
+    for d in con.execute("SELECT DISTINCT district FROM enterprises ORDER BY district"):
+        row = con.execute("""
+            SELECT COUNT(*) total,
+              SUM(CASE WHEN EXISTS (SELECT 1 FROM flags f WHERE
+                  f.enterprise_id=e.id AND f.status='open' AND f.level='alert')
+                  THEN 1 ELSE 0 END) alerts,
+              SUM(CASE WHEN EXISTS (SELECT 1 FROM flags f WHERE
+                  f.enterprise_id=e.id AND f.status='open' AND
+                  f.level IN ('warning','watch')) THEN 1 ELSE 0 END) flagged
+            FROM enterprises e WHERE e.district=?""", (d["district"],)).fetchone()
+        out.append({"district": d["district"], **dict(row)})
+    con.close()
+    return out
+
+
 @app.post("/enterprises", status_code=201)
 def create_enterprise(e: EnterpriseIn):
     """Onboard a new (thin-file) enterprise. It gets a forecast immediately

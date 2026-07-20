@@ -42,14 +42,35 @@ GROUP_WORDS = {
     "handicrafts": ["Kala", "Hastkala", "Shilp", "Rang"],
     "rural_retail": ["Gram", "Vyapar", "Bazar", "Seva"],
 }
-VILLAGES = {
-    "Deoli": ["Pulgaon", "Nachangaon", "Sonegaon", "Bhidi"],
-    "Arvi": ["Kharangana", "Rohna", "Wadhona", "Pachod"],
-    "Hinganghat": ["Wadner", "Alipur", "Pohna", "Sawali"],
-    "Seloo": ["Zadshi", "Rehki", "Surgaon", "Junona"],
+# Vidarbha districts, each with real tehsil/block names and villages
+DISTRICTS: dict[str, dict[str, list[str]]] = {
+    "Wardha": {
+        "Deoli": ["Pulgaon", "Nachangaon", "Sonegaon", "Bhidi"],
+        "Arvi": ["Kharangana", "Rohna", "Wadhona", "Pachod"],
+        "Hinganghat": ["Wadner", "Alipur", "Pohna", "Sawali"],
+        "Seloo": ["Zadshi", "Rehki", "Surgaon", "Junona"],
+    },
+    "Nagpur": {
+        "Katol": ["Kondhali", "Yenva", "Murti", "Sawargaon"],
+        "Umred": ["Bela", "Makardhokda", "Hewti", "Pachgaon"],
+        "Ramtek": ["Nagardhan", "Mansar", "Deolapar", "Musewadi"],
+        "Kalmeshwar": ["Mohpa", "Dhapewada", "Gondkhairi", "Ubali"],
+    },
+    "Amravati": {
+        "Achalpur": ["Paratwada", "Rasegaon", "Belora", "Pathrot"],
+        "Morshi": ["Riddhapur", "Hiwarkhed", "Nerpingalai", "Ambada"],
+        "Daryapur": ["Yeoda", "Thilori", "Banosa", "Mahuli"],
+        "Chandur": ["Talegaon", "Shirajgaon", "Amla", "Ghuikhed"],
+    },
+    "Yavatmal": {
+        "Pusad": ["Shembalpimpri", "Bansi", "Belora", "Marwadi"],
+        "Wani": ["Shindola", "Rajur", "Punvat", "Kayar"],
+        "Darwha": ["Mahagaon", "Ladkhed", "Bori", "Chikhli"],
+        "Kelapur": ["Pandharkawada", "Patanbori", "Rampur", "Sakhi"],
+    },
 }
-SECTOR_MIX = [("dairy", 14), ("poultry", 9), ("food_processing", 8),
-              ("handicrafts", 8), ("rural_retail", 11)]  # = 50 enterprises
+SECTOR_MIX = [("dairy", 12), ("poultry", 8), ("food_processing", 7),
+              ("handicrafts", 7), ("rural_retail", 8)]  # = 42 per district
 
 
 def _series_map(series: list[dict]) -> dict[str, float]:
@@ -79,13 +100,14 @@ def generate(external: dict[str, list[dict]], seed: int = 42) -> dict:
 
     enterprises, transactions, loans = [], [], []
     eid = 0
-    blocks = list(VILLAGES.keys())
 
-    for sector, count in SECTOR_MIX:
+    for district, village_map in DISTRICTS.items():
+      blocks = list(village_map.keys())
+      for sector, count in SECTOR_MIX:
         for k in range(count):
             eid += 1
             block = blocks[(eid + k) % 4]
-            village = VILLAGES[block][rng.integers(0, 4)]
+            village = village_map[block][rng.integers(0, 4)]
             word = GROUP_WORDS[sector][k % 4]
             leader = FIRST_NAMES[int(rng.integers(0, len(FIRST_NAMES)))]
             is_shg = rng.random() < 0.6
@@ -95,7 +117,7 @@ def generate(external: dict[str, list[dict]], seed: int = 42) -> dict:
             skill = float(rng.uniform(0.9, 1.1))       # management quality
             enterprises.append(dict(
                 id=eid, name=name, sector=sector, village=village,
-                block=block, district="Wardha", members=members,
+                block=block, district=district, members=members,
                 started_at=(start - timedelta(days=int(rng.integers(100, 900)))).isoformat()))
 
             has_loan = rng.random() < 0.65
@@ -105,7 +127,7 @@ def generate(external: dict[str, list[dict]], seed: int = 42) -> dict:
                 emi = round(principal / 36 * 1.09, -1)   # ~36mo, flat-ish
                 loans.append(dict(enterprise_id=eid, principal=principal,
                                   outstanding=principal * float(rng.uniform(0.3, 0.9)),
-                                  emi=emi, due_day=5, lender="Wardha Gramin Bank"))
+                                  emi=emi, due_day=5, lender=f"{district} Gramin Bank"))
 
             txns = _simulate_enterprise(
                 rng, sector, scale, skill, dates, maize, soy, rain_health, emi)
@@ -120,7 +142,7 @@ def generate(external: dict[str, list[dict]], seed: int = 42) -> dict:
     if not any(l["enterprise_id"] == 1 for l in loans):
         loans.append(dict(enterprise_id=1, principal=150000.0,
                           outstanding=98000.0, emi=4540.0, due_day=5,
-                          lender="Wardha Gramin Bank"))
+                          lender=f"{district} Gramin Bank"))
         for d in dates:
             if d.day == 5:
                 transactions.append(dict(enterprise_id=1, type="loan_repayment",

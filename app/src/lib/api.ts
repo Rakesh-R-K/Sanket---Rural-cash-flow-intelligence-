@@ -50,8 +50,11 @@ async function get<T>(path: string): Promise<T> {
   return r.json()
 }
 
+export interface DistrictSummary { district: string; total: number; alerts: number; flagged: number }
+
 export const api = {
-  enterprises: () => get<EnterpriseRow[]>('/enterprises'),
+  districts: () => get<DistrictSummary[]>('/districts'),
+  enterprises: (district = 'Wardha') => get<EnterpriseRow[]>(`/enterprises?district=${district}`),
   profile: (id: number) => get<Profile>(`/enterprises/${id}`),
   district: (d = 'Wardha') => get<DistrictRisk>(`/risk/district/${d}`),
   leadtime: () => get<LeadTime>('/validation/leadtime'),

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { api, type DistrictRisk, type EnterpriseRow, type LeadTime } from '../lib/api'
+import { api, type DistrictRisk, type DistrictSummary, type EnterpriseRow, type LeadTime } from '../lib/api'
 import { AnimatedNumber, RiskBadge, SectorIcon, SECTOR_LABEL } from './shared'
 import { Icon } from './icons'
 import { EnterpriseProfile } from './EnterpriseProfile'
@@ -26,7 +26,7 @@ function Marquee({ d }: { d: DistrictRisk }) {
       ]
   const row = [...items,
     { hot: false, text: `${d.kpis.total} ENTERPRISES MONITORED` },
-    { hot: false, text: 'WARDHA · VIDARBHA · MAHARASHTRA' },
+    { hot: false, text: `${d.district.toUpperCase()} · VIDARBHA · MAHARASHTRA` },
     { hot: false, text: 'AGMARKNET LIVE · IMD CALIBRATED' }]
   const doubled = [...row, ...row]
   return (
@@ -71,10 +71,13 @@ function StatBand({ d, lead }: { d: DistrictRisk; lead: LeadTime | null }) {
 /* ── constellation map ── */
 function DistrictMap({ d, active, onSelectBlock }:
   { d: DistrictRisk; active: string | null; onSelectBlock: (b: string | null) => void }) {
-  const POS: Record<string, { x: number; y: number }> = {
-    Seloo: { x: 30, y: 24 }, Deoli: { x: 68, y: 34 },
-    Arvi: { x: 22, y: 62 }, Hinganghat: { x: 66, y: 74 },
-  }
+  // ring layout: works for any district's blocks
+  const names = Object.keys(d.blocks)
+  const POS: Record<string, { x: number; y: number }> = {}
+  names.forEach((n, i) => {
+    const a = (i / names.length) * Math.PI * 2 - Math.PI / 3.2
+    POS[n] = { x: 50 + 26 * Math.cos(a), y: 49 + 25 * Math.sin(a) }
+  })
   const blocks = Object.entries(d.blocks)
   const edges: [string, string][] = []
   for (let i = 0; i < blocks.length; i++)
@@ -121,6 +124,8 @@ function DistrictMap({ d, active, onSelectBlock }:
 
 export function OfficerConsole() {
   const [rows, setRows] = useState<EnterpriseRow[]>([])
+  const [districtName, setDistrictName] = useState('Wardha')
+  const [allDistricts, setAllDistricts] = useState<DistrictSummary[]>([])
   const [district, setDistrict] = useState<DistrictRisk | null>(null)
   const [lead, setLead] = useState<LeadTime | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
@@ -129,11 +134,12 @@ export function OfficerConsole() {
   const [loaded, setLoaded] = useState(false)
   const [cascade, setCascade] = useState<CascadeResult | null>(null)
 
-  const refresh = async () => {
-    const [r, d, l] = await Promise.all([api.enterprises(), api.district(), api.leadtime()])
-    setRows(r); setDistrict(d); setLead(l); setLoaded(true)
+  const refresh = async (dn = districtName) => {
+    const [r, d, l, ds] = await Promise.all([
+      api.enterprises(dn), api.district(dn), api.leadtime(), api.districts()])
+    setRows(r); setDistrict(d); setLead(l); setAllDistricts(ds); setLoaded(true)
   }
-  useEffect(() => { void refresh() }, [])
+  useEffect(() => { setLoaded(false); setBlockFilter(null); void refresh(districtName) }, [districtName])
 
   const runShock = async (key: string, label: string) => {
     setBusy(label)
@@ -163,17 +169,30 @@ export function OfficerConsole() {
       {district && <Marquee d={district} />}
 
       {/* ── editorial hero ── */}
-      <section className="mx-auto max-w-6xl px-5 pb-8 pt-10">
-        <motion.div className="kicker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .1 }}>
-          Field officer console · Wardha district
-        </motion.div>
+      <section className="mx-auto w-full max-w-[1560px] px-6 pb-8 pt-10 md:px-12">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <motion.div className="kicker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .1 }}>
+            Field officer console · {districtName} district
+          </motion.div>
+          <div className="flex flex-wrap gap-1.5">
+            {allDistricts.map(d => (
+              <button key={d.district} onClick={() => setDistrictName(d.district)}
+                className={`mono rounded-full border px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.15em] transition-all ${districtName === d.district
+                  ? 'border-[var(--lime)] bg-[rgba(201,242,75,.1)] text-[var(--lime)]'
+                  : 'border-[var(--edge)] text-[var(--ink-faint)] hover:border-[var(--edge-lit)] hover:text-[var(--ink-dim)]'}`}>
+                {d.district}
+                {(d.alerts ?? 0) > 0 && <span className="ml-1.5 text-[var(--sig-red)]">●</span>}
+              </button>
+            ))}
+          </div>
+        </div>
         <motion.h1 className="display mt-4 max-w-3xl text-[clamp(2.2rem,5.5vw,4rem)] font-bold leading-[1.02] tracking-tight text-[var(--ink)]"
           initial="off" animate="on" variants={{ on: { transition: { staggerChildren: .09, delayChildren: .15 } } }}>
           {[
-            <span key="a">Every rupee flow,{' '}</span>,
-            <span key="b" className="text-[var(--ink-faint)]">seen early.{' '}</span>,
+            <span key="a">{districtName}\u2019s cash flows,{' '}</span>,
+            <span key="b" className="text-[var(--ink-faint)]">watched live.{' '}</span>,
             <span key="c" className="serif-accent text-[var(--lime)]" style={{ textShadow: '0 0 30px var(--lime-glow)' }}>
-              {needAttention > 0 ? `${needAttention} need you today.` : 'All quiet today.'}
+              {needAttention > 0 ? `${needAttention} need a visit this week.` : 'All quiet this week.'}
             </span>,
           ].map((chunk, i) => (
             <motion.span key={i} className="inline-block"
@@ -185,7 +204,7 @@ export function OfficerConsole() {
         {district && <div className="mt-8"><StatBand d={district} lead={lead} /></div>}
       </section>
 
-      <div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[1fr_330px]">
+      <div className="mx-auto grid w-full max-w-[1560px] gap-8 px-6 md:px-12 lg:grid-cols-[1fr_380px]">
         {/* ── triage ── */}
         <div>
           <div className="mb-4 flex items-center gap-3">

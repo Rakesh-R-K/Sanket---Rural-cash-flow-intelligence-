@@ -45,13 +45,13 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: "Inter Variable", ui-sans-serif, system-ui, "Noto Sans Devanagari", sans-serif;
+  font-family: "Poppins", ui-sans-serif, system-ui, "Noto Sans Devanagari", sans-serif;
   font-feature-settings: "tnum" 1;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
-.display { font-family: "Space Grotesk Variable", sans-serif; letter-spacing: -0.03em; }
+.display { font-family: "Poppins", sans-serif; letter-spacing: -0.045em; }
 .serif-accent { font-family: "Instrument Serif", serif; font-style: italic; font-weight: 400; letter-spacing: 0; }
 .mono { font-family: "JetBrains Mono Variable", ui-monospace, monospace; }
 .num { font-variant-numeric: tabular-nums; }

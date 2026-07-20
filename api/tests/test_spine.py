@@ -16,11 +16,11 @@ def client():
 
 def test_seed_is_deterministic_and_complete(client):
     con = db.connect()
-    assert con.execute("SELECT COUNT(*) c FROM enterprises").fetchone()["c"] == 50
+    assert con.execute("SELECT COUNT(*) c FROM enterprises").fetchone()["c"] == 168
     sectors = {r["sector"] for r in con.execute("SELECT DISTINCT sector FROM enterprises")}
     assert sectors == {"dairy", "poultry", "food_processing", "handicrafts",
                        "rural_retail"}
-    assert con.execute("SELECT COUNT(*) c FROM transactions").fetchone()["c"] > 10000
+    assert con.execute("SELECT COUNT(*) c FROM transactions").fetchone()["c"] > 30000
     con.close()
 
 
@@ -35,7 +35,7 @@ def test_every_flag_has_reasons(client):
 
 def test_triage_list_ranked(client):
     rows = client.get("/enterprises").json()
-    assert len(rows) == 50
+    assert len(rows) >= 40  # default district (Wardha)
     ranks = {"alert": 0, "warning": 1, "watch": 2, "healthy": 3}
     order = [ranks[r["risk"]] for r in rows]
     assert order == sorted(order)
@@ -92,4 +92,4 @@ def test_cold_start_enterprise_gets_sector_prior_forecast(client):
 
 def test_reset_restores_pristine_state(client):
     r = client.post("/admin/reset").json()
-    assert r["enterprises"] == 50 and r["seconds"] < 60
+    assert r["enterprises"] == 168 and r["seconds"] < 60
