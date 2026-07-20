@@ -78,11 +78,35 @@ def refresh_anchors() -> dict:
     return dict(PRICE_ANCHORS)
 
 
+def _load_real_history(commodity: str) -> dict[str, float]:
+    """Load fetched REAL Agmarknet records (see fetch_history.py) and reduce
+    to one price per day: the median modal price across Maharashtra mandis.
+    Returns {iso_date: price}. Empty dict if no fetch has run yet."""
+    path = RAW / f"history_{commodity.lower()}.json"
+    if not path.exists():
+        return {}
+    from collections import defaultdict
+    by_day: dict[str, list[float]] = defaultdict(list)
+    for r in json.loads(path.read_text()):
+        try:
+            d = r["Arrival_Date"]                      # DD/MM/YYYY
+            iso = f"{d[6:10]}-{d[3:5]}-{d[0:2]}"
+            price = float(r["Modal_Price"])
+            if price > 0:
+                by_day[iso].append(price)
+        except (KeyError, ValueError, TypeError):
+            continue
+    return {d: float(np.median(v)) for d, v in by_day.items()}
+
+
 def build_history(seed: int = 42) -> dict[str, list[dict]]:
     """24 months of daily mandi-price + rainfall series for Wardha.
 
-    Structure per series: trend + seasonality + AR(1) noise, calibrated to
-    real anchors/climatology. Returns {name: [{date, value, source}]}.
+    Prices: REAL Agmarknet observations are used verbatim on the days they
+    exist (median modal price across Maharashtra mandis, source='agmarknet_real');
+    gaps are bridged with the calibrated structural model anchored to the
+    nearest real observations (source='agmarknet_calibrated'). Every point
+    carries its provenance. Rainfall: IMD district climatology calibration.
     """
     rng = np.random.default_rng(seed)
     start = END_DATE - timedelta(days=DAYS - 1)
@@ -96,20 +120,27 @@ def build_history(seed: int = 42) -> dict[str, list[dict]]:
             x[i] = phi * x[i - 1] + e[i]
         return x
 
+    commodity_files = {"maize": "maize", "soybean": "soyabean"}  # API spelling
     for commodity, anchor in PRICE_ANCHORS.items():
-        # Kharif crops: prices dip at harvest arrival (Oct-Dec), firm in
-        # lean months (Apr-Jul). Mild upward drift ~4%/yr.
+        real = _load_real_history(commodity_files[commodity])
+        if real:  # re-anchor the structural model to the real median level
+            anchor = float(np.median(list(real.values())))
         seasonal_amp = 0.07 if commodity == "maize" else 0.09
         noise = ar1(DAYS, sigma=anchor * 0.006)
-        vals = []
+        series = []
         for i, d in enumerate(dates):
+            iso = d.isoformat()
+            if iso in real:
+                series.append({"date": iso, "value": round(real[iso], 1),
+                               "source": "agmarknet_real"})
+                continue
             doy = d.timetuple().tm_yday
             seasonal = -seasonal_amp * math.cos(2 * math.pi * (doy - 300) / 365)
             drift = 0.04 * (i / 365)
-            vals.append(anchor * (1 + seasonal + drift) + noise[i])
-        out[commodity] = [
-            {"date": d.isoformat(), "value": round(v, 1), "source": "agmarknet_calibrated"}
-            for d, v in zip(dates, vals)]
+            v = anchor * (1 + seasonal + drift) + noise[i]
+            series.append({"date": iso, "value": round(v, 1),
+                           "source": "agmarknet_calibrated"})
+        out[commodity] = series
 
     # Rainfall: daily draws whose monthly totals track climatology; year 2
     # gets a mild built-in deficit in Jun-Jul (a realistic weak-monsoon year,

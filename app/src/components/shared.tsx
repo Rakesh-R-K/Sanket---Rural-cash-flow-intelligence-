@@ -1,19 +1,27 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Risk } from '../lib/api'
+import { Icon } from './icons'
 
-const META: Record<Risk, { icon: string; label: string; cls: string }> = {
-  alert: { icon: '⏺', label: 'ALERT', cls: 'risk-alert' },
-  warning: { icon: '▲', label: 'WARNING', cls: 'risk-warning' },
-  watch: { icon: '◐', label: 'WATCH', cls: 'risk-watch' },
-  healthy: { icon: '✓', label: 'HEALTHY', cls: 'risk-healthy' },
+const RISK_META: Record<Risk, { label: string; cls: string; icon: keyof typeof Icon }> = {
+  alert: { label: 'Alert', cls: 'risk-alert', icon: 'alert' },
+  warning: { label: 'Warning', cls: 'risk-warning', icon: 'warning' },
+  watch: { label: 'Watch', cls: 'risk-watch', icon: 'watch' },
+  healthy: { label: 'Healthy', cls: 'risk-healthy', icon: 'healthy' },
 }
 
 export function RiskBadge({ risk, small }: { risk: Risk; small?: boolean }) {
-  const m = META[risk]
+  const m = RISK_META[risk]
+  const I = Icon[m.icon]
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border font-semibold ${m.cls} ${small ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'}`}>
-      <span aria-hidden>{m.icon}</span>{m.label}
+      <I size={small ? 11 : 13} />{m.label}
     </span>
   )
+}
+
+export function SectorIcon({ sector, size = 18, className = '' }: { sector: string; size?: number; className?: string }) {
+  const I = Icon[sector as keyof typeof Icon] ?? Icon.rural_retail
+  return <I size={size} className={className} />
 }
 
 export const SECTOR_LABEL: Record<string, string> = {
@@ -21,10 +29,28 @@ export const SECTOR_LABEL: Record<string, string> = {
   handicrafts: 'Handicrafts', rural_retail: 'Rural Retail',
 }
 
-export const SECTOR_ICON: Record<string, string> = {
-  dairy: '🐄', poultry: '🐔', food_processing: '🏭',
-  handicrafts: '🧵', rural_retail: '🏪',
-}
-
 export const fmtINR = (n: number) =>
-  '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN') + (n < 0 ? ' short' : '')
+  '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN')
+
+/** Animated counter: eases toward its target whenever `value` changes. */
+export function AnimatedNumber({ value, duration = 700, format }:
+  { value: number; duration?: number; format?: (n: number) => string }) {
+  const [display, setDisplay] = useState(value)
+  const fromRef = useRef(value)
+  useEffect(() => {
+    const from = fromRef.current
+    if (from === value) return
+    const t0 = performance.now()
+    let raf = 0
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setDisplay(from + (value - from) * eased)
+      if (p < 1) raf = requestAnimationFrame(tick)
+      else fromRef.current = value
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value, duration])
+  return <span className="num">{format ? format(display) : Math.round(display)}</span>
+}

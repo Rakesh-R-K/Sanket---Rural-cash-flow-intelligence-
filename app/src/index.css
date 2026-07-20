@@ -1,25 +1,119 @@
 @import "tailwindcss";
 
+/* ── Sanket design system ─────────────────────────────────────────────
+   Palette: deep institutional green + warm paper neutrals + semantic
+   risk hues. Type: strong contrast between display and body. Motion:
+   staggered entrance, animated numbers, pulse on live elements. */
+
 :root {
-  --sanket-green: #166534;
-  --sanket-cream: #fafaf5;
+  --green-950: #0a2e1a;
+  --green-900: #14532d;
+  --green-800: #166534;
+  --green-500: #22c55e;
+  --paper: #f7f6f1;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --line: #e7e5e0;
+  --amber: #d97706;
+  --red: #dc2626;
 }
+
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--sanket-cream);
-  font-family: ui-sans-serif, system-ui, "Noto Sans Devanagari", sans-serif;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, #e8f2e9 0%, transparent 60%),
+    var(--paper);
+  color: var(--ink);
+  font-family: "Inter", ui-sans-serif, system-ui, "Noto Sans Devanagari", sans-serif;
+  font-feature-settings: "tnum" 1, "cv05" 1;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* risk triple-coding: never color alone (icon + color + label in markup) */
-.risk-alert   { @apply bg-red-100 text-red-800 border-red-300; }
-.risk-warning { @apply bg-amber-100 text-amber-800 border-amber-300; }
-.risk-watch   { @apply bg-yellow-50 text-yellow-800 border-yellow-200; }
-.risk-healthy { @apply bg-emerald-50 text-emerald-800 border-emerald-200; }
+::selection { background: #bbf7d0; }
 
-/* SAAKH report: bank-grade on screen, clean on paper */
+/* ── motion ── */
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(220 38 38 / .45); }
+  60% { box-shadow: 0 0 0 7px rgb(220 38 38 / 0); }
+}
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes drawline { from { stroke-dashoffset: var(--len, 900); } to { stroke-dashoffset: 0; } }
+@keyframes countup { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+
+.rise { animation: rise .45s cubic-bezier(.22,.9,.3,1) both; }
+.rise-1 { animation-delay: .04s } .rise-2 { animation-delay: .09s }
+.rise-3 { animation-delay: .14s } .rise-4 { animation-delay: .19s }
+.rise-5 { animation-delay: .24s } .rise-6 { animation-delay: .29s }
+.fade { animation: fadeIn .4s ease both; }
+.countup { animation: countup .5s cubic-bezier(.22,.9,.3,1) both; }
+
+.stagger > * { animation: rise .4s cubic-bezier(.22,.9,.3,1) both; }
+.stagger > *:nth-child(1) { animation-delay: .02s } .stagger > *:nth-child(2) { animation-delay: .05s }
+.stagger > *:nth-child(3) { animation-delay: .08s } .stagger > *:nth-child(4) { animation-delay: .11s }
+.stagger > *:nth-child(5) { animation-delay: .14s } .stagger > *:nth-child(6) { animation-delay: .17s }
+.stagger > *:nth-child(7) { animation-delay: .20s } .stagger > *:nth-child(8) { animation-delay: .23s }
+.stagger > *:nth-child(9) { animation-delay: .26s } .stagger > *:nth-child(10) { animation-delay: .29s }
+.stagger > *:nth-child(n+11) { animation-delay: .32s }
+
+.live-dot { animation: pulse-dot 1.8s ease-out infinite; }
+
+/* shimmer for loading rows */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: #eceae4; border-radius: 8px;
+}
+.skeleton::after {
+  content: ""; position: absolute; inset: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, #ffffffb0, transparent);
+  animation: sweep 1.2s ease infinite;
+}
+
+/* ── surfaces ── */
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgb(28 25 23 / .04), 0 4px 16px -8px rgb(28 25 23 / .06);
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 2px 4px rgb(28 25 23 / .05), 0 12px 28px -10px rgb(28 25 23 / .13);
+  transform: translateY(-1px);
+  border-color: #d6d3cd;
+}
+
+.panel-title {
+  font-size: .7rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* ── risk semantics: color + icon + label, never color alone ── */
+.risk-alert   { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.risk-warning { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.risk-watch   { background: #fefce8; color: #a16207; border-color: #fef08a; }
+.risk-healthy { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+
+.risk-rail-alert   { border-left: 3px solid var(--red); }
+.risk-rail-warning { border-left: 3px solid var(--amber); }
+.risk-rail-watch   { border-left: 3px solid #eab308; }
+.risk-rail-healthy { border-left: 3px solid transparent; }
+
+/* numeric displays use tabular figures */
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── SAAKH report: bank-grade on screen, clean on paper ── */
+#saakh-report { font-feature-settings: "tnum" 1; }
 @media print {
+  body { background: #fff; }
   body * { visibility: hidden; }
   #saakh-report, #saakh-report * { visibility: visible; }
-  #saakh-report { position: absolute; inset: 0; width: 100%; }
+  #saakh-report { position: absolute; inset: 0; width: 100%; border: none !important; box-shadow: none !important; }
   .no-print { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

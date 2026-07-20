@@ -3,9 +3,10 @@ import { api, type Profile } from '../lib/api'
 import { recordTxn, pendingCount, drainOutbox } from '../lib/offline'
 import { useT } from '../lib/i18n'
 import { fmtINR } from './shared'
+import { Icon } from './icons'
 import { SaakhReport } from './SaakhReport'
 
-const LAKSHMI_ID = 1 // pinned protagonist (see simulator.py)
+const LAKSHMI_ID = 1
 
 type Tab = 'home' | 'entry' | 'alerts' | 'saakh'
 
@@ -18,6 +19,8 @@ function useOnline() {
   }, [])
   return online
 }
+
+const TYPE_ICON = { income: Icon.income, expense: Icon.expense, savings: Icon.savings, loan_repayment: Icon.loan } as const
 
 function EntryForm({ onSaved }: { onSaved: () => void }) {
   const { t } = useT()
@@ -42,26 +45,33 @@ function EntryForm({ onSaved }: { onSaved: () => void }) {
 
   const types = ['income', 'expense', 'savings', 'loan_repayment'] as const
   return (
-    <div className="space-y-3 p-4">
-      {/* tap 1: what kind */}
+    <div className="stagger space-y-3 p-4">
       <div className="grid grid-cols-2 gap-2">
-        {types.map(k => (
-          <button key={k} onClick={() => setType(k)}
-            className={`rounded-xl border-2 p-3 text-sm font-semibold ${type === k ? 'border-green-700 bg-green-50' : 'border-gray-200 bg-white'}`}>
-            {k === 'income' ? '💰' : k === 'expense' ? '🛒' : k === 'savings' ? '🏦' : '📄'} {t(k)}
-          </button>
-        ))}
+        {types.map(k => {
+          const I = TYPE_ICON[k]
+          return (
+            <button key={k} onClick={() => setType(k)}
+              className={`flex items-center gap-2 rounded-xl border-2 p-3 text-sm font-semibold transition-all active:scale-95 ${type === k ? 'border-green-700 bg-green-50 text-green-900' : 'border-stone-200 bg-white text-stone-600'}`}>
+              <I size={16} className={type === k ? 'text-green-700' : 'text-stone-400'} />
+              {t(k)}
+            </button>
+          )
+        })}
       </div>
-      {/* tap 2: how much */}
       <input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value.replace(/\D/g, ''))}
-        placeholder={t('amount')} className="w-full rounded-xl border-2 border-gray-200 p-3 text-lg" />
+        placeholder={t('amount')}
+        className="num w-full rounded-xl border-2 border-stone-200 p-3 text-lg outline-none transition focus:border-green-700" />
       <input value={note} onChange={e => setNote(e.target.value)} placeholder={t('note')}
-        className="w-full rounded-xl border-2 border-gray-200 p-3 text-sm" />
-      {/* tap 3: save */}
-      <button onClick={save} className="w-full rounded-xl bg-green-800 p-3 text-lg font-bold text-white">
+        className="w-full rounded-xl border-2 border-stone-200 p-3 text-sm outline-none transition focus:border-green-700" />
+      <button onClick={save}
+        className="w-full rounded-xl bg-green-800 p-3.5 text-lg font-bold text-white shadow-md transition hover:bg-green-900 active:scale-[.98]">
         {t('save')}
       </button>
-      {msg && <div className="rounded-lg bg-emerald-50 p-2 text-center text-sm text-emerald-800">{msg}</div>}
+      {msg && (
+        <div className="fade flex items-center justify-center gap-2 rounded-lg bg-emerald-50 p-2.5 text-sm text-emerald-800">
+          <Icon.check size={14} /> {msg}
+        </div>
+      )}
     </div>
   )
 }
@@ -71,33 +81,40 @@ function HealthCard({ p }: { p: Profile }) {
   const thisMonth = p.history[p.history.length - 1]
   const tight = p.forecast?.points.filter(pt => pt.net < 0) ?? []
   return (
-    <div className="space-y-3 p-4">
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-500">{t('healthCard')}</h3>
+    <div className="stagger space-y-3 p-4">
+      <div className="card p-4">
+        <div className="panel-title">{t('healthCard')}</div>
         <div className="mt-2 flex justify-between">
           <div>
-            <div className="text-xs text-gray-500">{t('thisMonth')} · {t('in_')}</div>
-            <div className="text-xl font-bold text-emerald-700">{fmtINR(thisMonth?.income ?? 0)}</div>
+            <div className="flex items-center gap-1 text-xs text-stone-400">
+              <Icon.income size={11} className="text-emerald-600" /> {t('thisMonth')} · {t('in_')}
+            </div>
+            <div className="num text-2xl font-bold text-emerald-700">{fmtINR(thisMonth?.income ?? 0)}</div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500">{t('thisMonth')} · {t('out')}</div>
-            <div className="text-xl font-bold text-gray-700">{fmtINR((thisMonth?.expense ?? 0) + (thisMonth?.repayment ?? 0))}</div>
+            <div className="flex items-center justify-end gap-1 text-xs text-stone-400">
+              <Icon.expense size={11} /> {t('thisMonth')} · {t('out')}
+            </div>
+            <div className="num text-2xl font-bold text-stone-700">
+              {fmtINR((thisMonth?.expense ?? 0) + (thisMonth?.repayment ?? 0))}
+            </div>
           </div>
         </div>
       </div>
-      <div className={`rounded-2xl p-4 shadow-sm ${tight.length ? 'bg-amber-50 border border-amber-200' : 'bg-emerald-50 border border-emerald-200'}`}>
-        <h3 className="text-sm font-bold">{t('nextMonths')}</h3>
-        <p className="mt-1 text-sm">
+
+      <div className={`card p-4 ${tight.length ? '!border-amber-200 !bg-amber-50/60' : '!border-emerald-200 !bg-emerald-50/60'}`}>
+        <div className="panel-title">{t('nextMonths')}</div>
+        <p className="mt-1.5 flex items-center gap-1.5 text-sm font-medium">
           {tight.length
-            ? `⚠ ${t('tightMonths')}: ${tight.map(m => m.month.slice(5)).join(', ')}`
-            : `✓ ${t('looksSteady')}`}
+            ? <><Icon.warning size={15} className="text-amber-600" /> {t('tightMonths')}: {tight.map(m => m.month.slice(5)).join(', ')}</>
+            : <><Icon.healthy size={15} className="text-emerald-600" /> {t('looksSteady')}</>}
         </p>
-        {/* six-month strip: simple squares, readable at arm's length */}
-        <div className="mt-2 flex gap-1">
-          {p.forecast?.points.map(pt => (
+        <div className="mt-3 flex gap-1.5">
+          {p.forecast?.points.map((pt, i) => (
             <div key={pt.month} className="flex-1 text-center">
-              <div className={`h-8 rounded ${pt.net < 0 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-              <div className="mt-0.5 text-[9px] text-gray-500">{pt.month.slice(5)}</div>
+              <div className={`rise h-9 rounded-md ${pt.net < 0 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                style={{ animationDelay: `${i * 60}ms` }} />
+              <div className="mt-1 text-[9px] text-stone-400">{pt.month.slice(5)}</div>
             </div>
           ))}
         </div>
@@ -110,27 +127,37 @@ function Alerts({ p, onAction }: { p: Profile; onAction: () => void }) {
   const { t, pick } = useT()
   const flags = p.flags
   if (!flags.length)
-    return <div className="p-6 text-center text-sm text-gray-600">{t('noAlerts')}</div>
+    return (
+      <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-stone-500">
+        <Icon.healthy size={28} className="text-emerald-500" />
+        {t('noAlerts')}
+      </div>
+    )
   return (
-    <div className="space-y-3 p-4">
+    <div className="stagger space-y-3 p-4">
       {flags.map(f => (
-        <div key={f.id} className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-amber-800">
-            ⚠ {f.level.toUpperCase()}
+        <div key={f.id} className="card !border-amber-200 p-4">
+          <div className="mb-2 flex items-center gap-1.5 text-sm font-bold text-amber-800">
+            <Icon.warning size={15} /> {f.level.toUpperCase()}
           </div>
-          <ul className="space-y-1 text-sm">
-            {f.reasons.map((r, i) => <li key={i}>• {pick(r)}</li>)}
+          <ul className="space-y-1.5 text-sm text-stone-700">
+            {f.reasons.map((r, i) => (
+              <li key={i} className="flex gap-1.5">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-500" />
+                {pick(r)}
+              </li>
+            ))}
           </ul>
           {f.suggestions.length > 0 && (
-            <div className="mt-3 border-t pt-2">
-              <div className="mb-1 text-xs font-bold text-gray-500">{t('suggestions')}</div>
+            <div className="mt-3 border-t border-stone-100 pt-2.5">
+              <div className="panel-title mb-1.5">{t('suggestions')}</div>
               {f.suggestions.map(s => (
-                <div key={s.id} className="mb-2 flex items-start gap-2">
-                  <p className="flex-1 text-sm">{pick(s)}</p>
+                <div key={s.id} className="mb-2 flex items-start gap-2 last:mb-0">
+                  <p className="flex-1 text-sm text-stone-700">{pick(s)}</p>
                   {s.action_status === 'done'
-                    ? <span className="text-xs text-emerald-700">✓</span>
+                    ? <Icon.check size={15} className="mt-0.5 shrink-0 text-emerald-600" />
                     : <button onClick={() => api.suggestionDone(s.id).then(onAction)}
-                        className="shrink-0 rounded bg-emerald-700 px-2 py-1 text-xs font-semibold text-white">
+                        className="shrink-0 rounded-md bg-emerald-700 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-emerald-800 active:scale-95">
                         {t('markDone')}
                       </button>}
                 </div>
@@ -151,7 +178,7 @@ export function EnterpriseApp() {
   const [pending, setPending] = useState(0)
 
   const load = async () => {
-    try { setP(await api.profile(LAKSHMI_ID)) } catch { /* offline: cached shell + last state */ }
+    try { setP(await api.profile(LAKSHMI_ID)) } catch { /* offline: cached shell */ }
     setPending(await pendingCount())
   }
   useEffect(() => { void load() }, [])
@@ -159,53 +186,87 @@ export function EnterpriseApp() {
 
   if (tab === 'saakh') return <SaakhReport id={LAKSHMI_ID} onBack={() => setTab('home')} />
 
+  const NAV: { key: Tab; icon: keyof typeof Icon; label: string }[] = [
+    { key: 'home', icon: 'home', label: t('home') },
+    { key: 'entry', icon: 'plus', label: t('addEntry') },
+    { key: 'alerts', icon: 'bell', label: t('alerts') },
+  ]
+
   return (
-    <div className="mx-auto flex min-h-[80vh] max-w-md flex-col rounded-3xl border bg-[#fafaf5] shadow-lg">
+    <div className="mx-auto flex min-h-[82vh] max-w-md flex-col overflow-hidden rounded-3xl border border-stone-200 bg-[#f7f6f1] shadow-xl">
       {/* status bar */}
-      <div className="flex items-center justify-between rounded-t-3xl bg-green-800 px-4 py-3 text-white">
+      <div className="flex items-center justify-between bg-gradient-to-r from-green-900 to-green-800 px-4 py-3 text-white">
         <div>
-          <div className="font-bold">{t('appName')} · {p?.name.split('(')[0] ?? ''}</div>
-          <div className="text-[10px] opacity-80">{t('tagline')}</div>
+          <div className="font-bold leading-tight">{t('appName')}</div>
+          <div className="text-[10px] opacity-70">{p?.name.split('(')[0].trim() ?? t('tagline')}</div>
         </div>
-        <div className="text-right text-[10px]">
-          <div className={`rounded-full px-2 py-0.5 font-semibold ${online ? 'bg-emerald-600' : 'bg-gray-600'}`}>
+        <div className="text-right">
+          <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${online ? 'bg-emerald-600/80' : 'bg-stone-600/80'}`}>
+            {online ? <Icon.wifi size={11} /> : <Icon.wifiOff size={11} />}
             {online ? t('online') : t('offline')}
           </div>
-          {pending > 0 && <div className="mt-1 opacity-90">{pending} {t('pendingSync')}</div>}
+          {pending > 0 && (
+            <div className="num mt-1 text-[10px] opacity-90">{pending} {t('pendingSync')}</div>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" key={tab}>
         {p ? (
           <>
-            {tab === 'home' && <HealthCard p={p} />}
+            {tab === 'home' && (
+              <>
+                <HealthCard p={p} />
+                <div className="px-4 pb-4">
+                  <button onClick={() => setTab('saakh')}
+                    className="card card-hover flex w-full items-center gap-3 p-3.5 text-left">
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-green-100 text-green-800">
+                      <Icon.report size={18} />
+                    </span>
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-green-900">{t('getSaakh')}</div>
+                      <div className="text-xs text-stone-400">{t('saakhSub')}</div>
+                    </div>
+                    <Icon.arrowRight size={16} className="text-stone-300" />
+                  </button>
+                </div>
+              </>
+            )}
             {tab === 'entry' && <EntryForm onSaved={load} />}
             {tab === 'alerts' && <Alerts p={p} onAction={load} />}
-            {tab === 'home' && (
-              <div className="px-4 pb-4">
-                <button onClick={() => setTab('saakh')}
-                  className="w-full rounded-2xl border-2 border-green-800 bg-white p-3 text-left">
-                  <div className="font-bold text-green-900">📄 {t('getSaakh')}</div>
-                  <div className="text-xs text-gray-500">{t('saakhSub')}</div>
-                </button>
-              </div>
-            )}
           </>
-        ) : <div className="p-8 text-center text-sm text-gray-400">…</div>}
+        ) : (
+          <div className="space-y-3 p-4">
+            <div className="skeleton h-24" /><div className="skeleton h-32" />
+          </div>
+        )}
       </div>
 
       {/* bottom nav */}
-      <nav className="grid grid-cols-3 border-t bg-white rounded-b-3xl">
-        {(['home', 'entry', 'alerts'] as Tab[]).map(k => (
-          <button key={k} onClick={() => setTab(k)}
-            className={`py-3 text-xs font-semibold ${tab === k ? 'text-green-800' : 'text-gray-400'}`}>
-            {k === 'home' ? '🏠' : k === 'entry' ? '➕' : '🔔'}<br />
-            {t(k === 'entry' ? 'addEntry' : k === 'home' ? 'home' : 'alerts')}
-            {k === 'alerts' && (p?.flags.length ?? 0) > 0 && <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[9px] text-white">{p!.flags.length}</span>}
-          </button>
-        ))}
+      <nav className="grid grid-cols-3 border-t border-stone-200 bg-white">
+        {NAV.map(({ key, icon, label }) => {
+          const I = Icon[icon]
+          const active = tab === key
+          const badge = key === 'alerts' ? (p?.flags.length ?? 0) : 0
+          return (
+            <button key={key} onClick={() => setTab(key)}
+              className={`relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition ${active ? 'text-green-800' : 'text-stone-400 hover:text-stone-500'}`}>
+              <span className={`grid h-7 w-12 place-items-center rounded-full transition ${active ? 'bg-green-100' : ''}`}>
+                <I size={17} />
+              </span>
+              {label}
+              {badge > 0 && (
+                <span className="num absolute right-[calc(50%-22px)] top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white">
+                  {badge}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </nav>
-      <div className="pb-1 text-center text-[9px] text-gray-400">{lang === 'hi' ? 'संकेत — नाबार्ड हैकाथॉन' : 'Sanket — NABARD Hackathon'}</div>
+      <div className="bg-white pb-1.5 text-center text-[9px] text-stone-300">
+        {lang === 'hi' ? 'संकेत — नाबार्ड हैकाथॉन' : 'Sanket — NABARD Hackathon'}
+      </div>
     </div>
   )
 }
