@@ -2,6 +2,7 @@
 // pipeline as a staged sequence driven by REAL response data from the API.
 // This is the demo's money moment rendered as motion graphics.
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { Icon } from './icons'
 import { SECTOR_LABEL } from './shared'
 
@@ -29,17 +30,22 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
   const levels = result.by_level ?? {}
 
   return (
-    <div className="cascade-veil" onClick={onDone}>
+    <motion.div className="cascade-veil" onClick={onDone}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="cascade-stage" onClick={e => e.stopPropagation()}>
-        <div className="mono mb-4 flex items-center gap-2 text-[11px] uppercase tracking-[.2em] text-[var(--text-faint)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--sig-green)]" style={{ animation: 'blink 1s infinite' }} />
-          Sanket cascade · live pipeline trace
+        <div className="mb-5">
+          <div className="kicker">Live pipeline trace</div>
+          <div className="display mt-2 text-2xl font-bold text-[var(--ink)]">
+            The cascade, <span className="serif-accent text-[var(--lime)]">as it happens.</span>
+          </div>
         </div>
 
         {/* step 1: shock enters */}
         {step >= 1 && (
           <>
-            <div className="cascade-step">
+            <motion.div className="cascade-step" initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
               <div className="cascade-node active bg-[rgba(251,191,36,.12)] text-[var(--sig-amber)]">
                 <Icon.signal size={18} />
               </div>
@@ -47,7 +53,7 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
                 <div className="text-sm font-bold text-[var(--text)]">Market shock enters the district</div>
                 <div className="mono mt-0.5 text-xs text-[var(--text-dim)]">{result.shock}</div>
               </div>
-            </div>
+            </motion.div>
             {step >= 2 && <div className="cascade-connector" />}
           </>
         )}
@@ -55,7 +61,9 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
         {/* step 2: signal detected */}
         {step >= 2 && sig && (
           <>
-            <div className="cascade-step">
+            <motion.div className="cascade-step" initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
               <div className="cascade-node active bg-[rgba(251,95,95,.12)] text-[var(--sig-red)]">
                 <Icon.alert size={18} />
               </div>
@@ -67,7 +75,7 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
                   <span className="ml-2 text-[var(--text-faint)]">30-day mean vs trailing year</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
             {step >= 3 && <div className="cascade-connector" />}
           </>
         )}
@@ -75,7 +83,9 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
         {/* step 3: exposure mapping */}
         {step >= 3 && (
           <>
-            <div className="cascade-step">
+            <motion.div className="cascade-step" initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
               <div className="cascade-node active bg-[rgba(56,189,248,.12)] text-[var(--sig-blue)]">
                 <Icon.map size={18} />
               </div>
@@ -94,14 +104,17 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
             {step >= 4 && <div className="cascade-connector" />}
           </>
         )}
 
         {/* step 4: flags raised */}
         {step >= 4 && (
-          <div className="cascade-step" style={{ borderColor: 'rgba(251,95,95,.35)' }}>
+          <motion.div className="cascade-step" style={{ borderColor: 'rgba(248,113,113,.4)' }}
+            initial={{ opacity: 0, x: -28, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+            transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
             <div className="cascade-node active bg-[rgba(251,95,95,.15)] text-[var(--sig-red)]">
               <Icon.bell size={18} />
             </div>
@@ -117,15 +130,15 @@ export function CascadeOverlay({ result, onDone }: { result: CascadeResult; onDo
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {step >= 5 && (
-          <div className="pop mt-5 text-center text-xs text-[var(--text-faint)]">
+          <div className="fade mt-5 text-center text-xs text-[var(--text-faint)]">
             Alerts queued for enterprises and field officer · tap anywhere to continue
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

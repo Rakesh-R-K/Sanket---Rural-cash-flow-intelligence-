@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { api, type DistrictRisk, type EnterpriseRow, type LeadTime } from '../lib/api'
 import { AnimatedNumber, RiskBadge, SectorIcon, SECTOR_LABEL } from './shared'
 import { Icon } from './icons'
@@ -12,26 +13,29 @@ const LEVEL_COLOR: Record<string, string> = {
 const blockLevel = (levels: Record<string, number>) =>
   levels.alert ? 'alert' : levels.warning ? 'warning' : levels.watch ? 'watch' : 'healthy'
 
-/* ── signal ticker tape across the top ── */
-function SignalTicker({ d }: { d: DistrictRisk }) {
+const spring = { type: 'spring', stiffness: 300, damping: 30 } as const
+
+/* ── editorial marquee ── */
+function Marquee({ d }: { d: DistrictRisk }) {
   const items = d.signals.length
-    ? d.signals.map(s => ({
-        hot: true,
-        text: `${s.commodity.toUpperCase()} ${s.kind.replace('_', ' ').toUpperCase()} z=${s.magnitude_z}`,
-      }))
+    ? d.signals.map(s => ({ hot: true, text: `${s.commodity.toUpperCase()} ${s.kind.replace('_', ' ').toUpperCase()} · z=${s.magnitude_z}` }))
     : [
-        { hot: false, text: 'MAIZE · district mandis · steady' },
-        { hot: false, text: 'SOYBEAN · district mandis · steady' },
-        { hot: false, text: 'MONSOON · Wardha · within climatology' },
+        { hot: false, text: 'MAIZE — district mandis steady' },
+        { hot: false, text: 'SOYBEAN — district mandis steady' },
+        { hot: false, text: 'MONSOON — within climatology' },
       ]
-  const row = [...items, { hot: false, text: `${d.kpis.total} ENTERPRISES MONITORED · WARDHA DISTRICT` }]
+  const row = [...items,
+    { hot: false, text: `${d.kpis.total} ENTERPRISES MONITORED` },
+    { hot: false, text: 'WARDHA · VIDARBHA · MAHARASHTRA' },
+    { hot: false, text: 'AGMARKNET LIVE · IMD CALIBRATED' }]
   const doubled = [...row, ...row]
   return (
-    <div className="ticker-wrap mono border-b border-[var(--edge)] bg-[var(--deep)] py-1.5 text-[10px] tracking-[.15em]">
-      <div className="ticker-track">
+    <div className="marquee border-b border-[var(--edge)] py-2.5">
+      <div className="marquee-track mono text-[10px] font-medium tracking-[.22em]">
         {doubled.map((it, i) => (
-          <span key={i} className={`flex items-center gap-2 ${it.hot ? 'text-[var(--sig-red)]' : 'text-[var(--text-faint)]'}`}>
-            <span className={`h-1 w-1 rounded-full ${it.hot ? 'bg-[var(--sig-red)] dot-live' : 'bg-[var(--edge-lit)]'}`} />
+          <span key={i} className={`flex items-center gap-2.5 ${it.hot ? 'text-[var(--sig-red)]' : 'text-[var(--ink-faint)]'}`}>
+            <span className={`h-1 w-1 rounded-full ${it.hot ? 'bg-[var(--sig-red)] dot-live' : 'bg-[var(--lime)]'}`}
+              style={it.hot ? undefined : { opacity: .5 }} />
             {it.text}
           </span>
         ))}
@@ -40,114 +44,78 @@ function SignalTicker({ d }: { d: DistrictRisk }) {
   )
 }
 
-/* ── radial gauge for lead time ── */
-function LeadGauge({ lead }: { lead: LeadTime }) {
-  if (lead.median_lead_days == null) return null
-  const pct = Math.min(1, lead.median_lead_days / (lead.target_days * 2))
-  const R = 42, C = 2 * Math.PI * R
-  const onTarget = lead.median_lead_days >= lead.target_days
+/* ── qount-style stat band: huge numerals, thin rules ── */
+function StatBand({ d, lead }: { d: DistrictRisk; lead: LeadTime | null }) {
+  const stats = [
+    { label: 'enterprises monitored', value: d.kpis.total, tone: 'var(--ink)' },
+    { label: 'alerts open', value: d.kpis.alerts, tone: d.kpis.alerts ? 'var(--sig-red)' : 'var(--ink)' },
+    { label: 'warnings open', value: d.kpis.warnings, tone: d.kpis.warnings ? 'var(--sig-amber)' : 'var(--ink)' },
+    { label: 'days median lead time', value: lead?.median_lead_days ?? 0, tone: 'var(--lime)' },
+  ]
   return (
-    <section className="panel scanning">
-      <div className="panel-head"><Icon.clock size={11} className="lit" /> Early-warning lead time</div>
-      <div className="flex items-center gap-4 p-4">
-        <div className="relative h-[104px] w-[104px] shrink-0">
-          <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-            <circle cx="50" cy="50" r={R} fill="none" stroke="var(--edge)" strokeWidth="7" />
-            <circle cx="50" cy="50" r={R} fill="none"
-              stroke={onTarget ? 'var(--sig-green)' : 'var(--sig-amber)'} strokeWidth="7"
-              strokeLinecap="round" strokeDasharray={C}
-              strokeDashoffset={C * (1 - pct)}
-              style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.2,.85,.25,1)', filter: `drop-shadow(0 0 6px ${onTarget ? 'var(--sig-green-glow)' : 'var(--sig-amber-glow)'})` }} />
-          </svg>
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="text-center">
-              <div className="num countup text-2xl font-black text-[var(--text)]">
-                <AnimatedNumber value={lead.median_lead_days} />
-              </div>
-              <div className="mono text-[9px] uppercase tracking-wider text-[var(--text-faint)]">days</div>
-            </div>
+    <motion.div className="grid grid-cols-2 divide-[var(--edge)] border-y border-[var(--edge)] md:grid-cols-4 md:divide-x"
+      initial="off" animate="on" variants={{ on: { transition: { staggerChildren: .08 } } }}>
+      {stats.map(s => (
+        <motion.div key={s.label} className="px-5 py-5"
+          variants={{ off: { opacity: 0, y: 18 }, on: { opacity: 1, y: 0, transition: spring } }}>
+          <div className="display num text-[2.75rem] font-bold leading-none" style={{ color: s.tone }}>
+            <AnimatedNumber value={s.value} />
           </div>
-        </div>
-        <div className="min-w-0">
-          <div className={`text-xs font-bold ${onTarget ? 'text-[var(--sig-green)]' : 'text-[var(--sig-amber)]'}`}>
-            {onTarget ? 'ON TARGET' : 'BELOW TARGET'} · {lead.target_days}d goal
-          </div>
-          <div className="mono num mt-0.5 text-[10px] text-[var(--text-faint)]">
-            range {lead.min_lead_days}–{lead.max_lead_days}d · n={lead.flags_with_projected_distress}
-          </div>
-          <p className="mt-1.5 text-[11px] leading-snug text-[var(--text-dim)]">
-            Median warning before projected cash distress — the intervention window, not an accuracy score.
-          </p>
-        </div>
-      </div>
-    </section>
+          <div className="mono mt-2 text-[9px] uppercase tracking-[.24em] text-[var(--ink-faint)]">{s.label}</div>
+        </motion.div>
+      ))}
+    </motion.div>
   )
 }
 
-/* ── district map: SVG constellation of blocks ── */
+/* ── constellation map ── */
 function DistrictMap({ d, active, onSelectBlock }:
   { d: DistrictRisk; active: string | null; onSelectBlock: (b: string | null) => void }) {
-  // fixed layout for Wardha's four demo blocks, drawn as a connected graph
   const POS: Record<string, { x: number; y: number }> = {
-    Seloo: { x: 30, y: 24 }, Wardha: { x: 50, y: 50 },
-    Deoli: { x: 68, y: 34 }, Arvi: { x: 22, y: 62 }, Hinganghat: { x: 66, y: 74 },
+    Seloo: { x: 30, y: 24 }, Deoli: { x: 68, y: 34 },
+    Arvi: { x: 22, y: 62 }, Hinganghat: { x: 66, y: 74 },
   }
   const blocks = Object.entries(d.blocks)
   const edges: [string, string][] = []
   for (let i = 0; i < blocks.length; i++)
     for (let j = i + 1; j < blocks.length; j++) edges.push([blocks[i][0], blocks[j][0]])
   return (
-    <div className="relative">
-      <svg viewBox="0 0 100 92" className="w-full">
-        {edges.map(([a, b], i) => {
-          const p1 = POS[a] ?? { x: 50, y: 50 }, p2 = POS[b] ?? { x: 50, y: 50 }
-          return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-            stroke="var(--edge)" strokeWidth=".5" strokeDasharray="2 3"
-            style={{ animation: 'dashFlow 3s linear infinite' }} />
-        })}
-        {blocks.map(([name, b]) => {
-          const p = POS[name] ?? { x: 50, y: 50 }
-          const lvl = blockLevel(b.levels)
-          const total = Object.values(b.levels).reduce((s, n) => s + n, 0)
-          const flagged = (b.levels.alert ?? 0) + (b.levels.warning ?? 0) + (b.levels.watch ?? 0)
-          const r = 6 + Math.min(6, total * 0.45)
-          const c = LEVEL_COLOR[lvl]
-          return (
-            <g key={name} onClick={() => onSelectBlock(active === name ? null : name)}
-              className="cursor-pointer" style={{ animation: 'popIn .5s both' }}>
-              {lvl !== 'healthy' && (
-                <circle cx={p.x} cy={p.y} r={r} fill="none" stroke={c} strokeWidth=".8" opacity=".6">
-                  <animate attributeName="r" values={`${r};${r * 2.1}`} dur="1.8s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values=".6;0" dur="1.8s" repeatCount="indefinite" />
-                </circle>
-              )}
-              <circle cx={p.x} cy={p.y} r={r} fill={c} fillOpacity={active === name ? .5 : .22}
-                stroke={c} strokeWidth={active === name ? 1.6 : 1}
-                style={{ transition: 'all .4s ease', filter: lvl !== 'healthy' ? `drop-shadow(0 0 4px ${c})` : undefined }} />
-              <text x={p.x} y={p.y - r - 3} textAnchor="middle" fill="var(--text-dim)"
-                fontSize="4.4" fontWeight="700" style={{ letterSpacing: '.08em' }}>{name.toUpperCase()}</text>
-              <text x={p.x} y={p.y + 1.6} textAnchor="middle" fill="var(--text)"
-                fontSize="4.6" fontWeight="800" className="num">{flagged}/{total}</text>
-            </g>
-          )
-        })}
-      </svg>
-    </div>
-  )
-}
-
-/* ── portfolio composition bar ── */
-function CompositionBar({ rows }: { rows: EnterpriseRow[] }) {
-  const counts = { alert: 0, warning: 0, watch: 0, healthy: 0 }
-  rows.forEach(r => { counts[r.risk] += 1 })
-  const total = rows.length || 1
-  return (
-    <div className="flex h-2 overflow-hidden rounded-full border border-[var(--edge)]">
-      {(['alert', 'warning', 'watch', 'healthy'] as const).map(l => counts[l] > 0 && (
-        <div key={l} title={`${counts[l]} ${l}`}
-          style={{ width: `${(counts[l] / total) * 100}%`, background: LEVEL_COLOR[l], opacity: l === 'healthy' ? .45 : .9, transition: 'width .8s cubic-bezier(.2,.85,.25,1)' }} />
-      ))}
-    </div>
+    <svg viewBox="0 0 100 92" className="w-full">
+      {edges.map(([a, b], i) => {
+        const p1 = POS[a] ?? { x: 50, y: 50 }, p2 = POS[b] ?? { x: 50, y: 50 }
+        return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+          stroke="var(--edge-lit)" strokeWidth=".4" strokeDasharray="2 3"
+          style={{ animation: 'dashFlow 3s linear infinite' }} />
+      })}
+      {blocks.map(([name, b], bi) => {
+        const p = POS[name] ?? { x: 50, y: 50 }
+        const lvl = blockLevel(b.levels)
+        const total = Object.values(b.levels).reduce((s, n) => s + n, 0)
+        const flagged = (b.levels.alert ?? 0) + (b.levels.warning ?? 0) + (b.levels.watch ?? 0)
+        const r = 6 + Math.min(6, total * 0.45)
+        const c = LEVEL_COLOR[lvl]
+        return (
+          <motion.g key={name} onClick={() => onSelectBlock(active === name ? null : name)}
+            className="cursor-pointer"
+            initial={{ opacity: 0, scale: .6 }} animate={{ opacity: 1, scale: 1 }}
+            transition={{ ...spring, delay: bi * .1 }}>
+            {lvl !== 'healthy' && (
+              <circle cx={p.x} cy={p.y} r={r} fill="none" stroke={c} strokeWidth=".7" opacity=".55">
+                <animate attributeName="r" values={`${r};${r * 2.1}`} dur="1.9s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values=".55;0" dur="1.9s" repeatCount="indefinite" />
+              </circle>
+            )}
+            <circle cx={p.x} cy={p.y} r={r} fill={c} fillOpacity={active === name ? .5 : .2}
+              stroke={c} strokeWidth={active === name ? 1.5 : .9}
+              style={{ transition: 'all .4s ease', filter: lvl !== 'healthy' ? `drop-shadow(0 0 5px ${c})` : undefined }} />
+            <text x={p.x} y={p.y - r - 3.2} textAnchor="middle" fill="var(--ink-dim)"
+              fontSize="4.2" fontWeight="700" style={{ letterSpacing: '.12em' }}>{name.toUpperCase()}</text>
+            <text x={p.x} y={p.y + 1.7} textAnchor="middle" fill="var(--ink)"
+              fontSize="4.6" fontWeight="800" className="num">{flagged}/{total}</text>
+          </motion.g>
+        )
+      })}
+    </svg>
   )
 }
 
@@ -170,12 +138,12 @@ export function OfficerConsole() {
   const runShock = async (key: string, label: string) => {
     setBusy(label)
     const result = await api.shock(key)
-    setCascade(result)          // overlay narrates while data refreshes behind
+    setCascade(result)
     await refresh()
     setBusy(null)
   }
   const runReset = async () => {
-    setBusy('Resetting')
+    setBusy('resetting')
     await api.reset()
     await refresh()
     setSelected(null); setBusy(null)
@@ -185,137 +153,155 @@ export function OfficerConsole() {
     return <EnterpriseProfile id={selected} onBack={() => { setSelected(null); void refresh() }} />
 
   const visible = blockFilter ? rows.filter(r => r.block === blockFilter) : rows
+  const needAttention = (district?.kpis.alerts ?? 0) + (district?.kpis.warnings ?? 0)
 
   return (
     <>
-      {cascade && <CascadeOverlay result={cascade} onDone={() => setCascade(null)} />}
-      {district && <SignalTicker d={district} />}
+      <AnimatePresence>
+        {cascade && <CascadeOverlay result={cascade} onDone={() => setCascade(null)} />}
+      </AnimatePresence>
+      {district && <Marquee d={district} />}
 
-      <div className="mx-auto grid max-w-6xl gap-5 p-4 lg:grid-cols-[1fr_340px]">
-        {/* ── left: triage ── */}
+      {/* ── editorial hero ── */}
+      <section className="mx-auto max-w-6xl px-5 pb-8 pt-10">
+        <motion.div className="kicker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .1 }}>
+          Field officer console · Wardha district
+        </motion.div>
+        <motion.h1 className="display mt-4 max-w-3xl text-[clamp(2.2rem,5.5vw,4rem)] font-bold leading-[1.02] tracking-tight text-[var(--ink)]"
+          initial="off" animate="on" variants={{ on: { transition: { staggerChildren: .09, delayChildren: .15 } } }}>
+          {[
+            <span key="a">Every rupee flow,{' '}</span>,
+            <span key="b" className="text-[var(--ink-faint)]">seen early.{' '}</span>,
+            <span key="c" className="serif-accent text-[var(--lime)]" style={{ textShadow: '0 0 30px var(--lime-glow)' }}>
+              {needAttention > 0 ? `${needAttention} need you today.` : 'All quiet today.'}
+            </span>,
+          ].map((chunk, i) => (
+            <motion.span key={i} className="inline-block"
+              variants={{ off: { opacity: 0, y: 28, filter: 'blur(8px)' }, on: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: .6, ease: [.2, .8, .2, 1] } } }}>
+              {chunk}
+            </motion.span>
+          ))}
+        </motion.h1>
+        {district && <div className="mt-8"><StatBand d={district} lead={lead} /></div>}
+      </section>
+
+      <div className="mx-auto grid max-w-6xl gap-6 px-5 lg:grid-cols-[1fr_330px]">
+        {/* ── triage ── */}
         <div>
-          <div className="rise mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div>
-              <div className="mono text-[10px] uppercase tracking-[.2em] text-[var(--text-faint)]">Field officer console</div>
-              <h2 className="text-xl font-black tracking-tight text-[var(--text)]">Wardha District</h2>
-            </div>
-            {district && (
-              <div className="mono ml-auto flex items-center gap-4 text-xs">
-                <span className="num text-[var(--text-dim)]">{district.kpis.total} monitored</span>
-                <span className="flex items-center gap-1.5 font-bold text-[var(--sig-red)]">
-                  <Icon.alert size={13} /><AnimatedNumber value={district.kpis.alerts} /> ALERT
-                </span>
-                <span className="flex items-center gap-1.5 font-bold text-[var(--sig-amber)]">
-                  <Icon.warning size={13} /><AnimatedNumber value={district.kpis.warnings} /> WARN
-                </span>
-              </div>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="kicker">Triage — ranked by risk</span>
+            {blockFilter && (
+              <motion.button initial={{ opacity: 0, scale: .8 }} animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setBlockFilter(null)}
+                className="mono rounded-full border border-[rgba(201,242,75,.4)] bg-[rgba(201,242,75,.08)] px-3 py-1 text-[9px] uppercase tracking-[.2em] text-[var(--lime)]">
+                {blockFilter} — clear ×
+              </motion.button>
             )}
           </div>
 
-          <div className="rise rise-1 mb-3"><CompositionBar rows={rows} /></div>
-
-          {blockFilter && (
-            <button onClick={() => setBlockFilter(null)}
-              className="fade mono mb-3 rounded-full border border-[var(--edge-lit)] bg-[var(--surface)] px-3 py-1 text-[10px] uppercase tracking-wider text-[var(--text-dim)] hover:text-[var(--text)]">
-              filter: {blockFilter} — clear ×
-            </button>
-          )}
-
           {!loaded ? (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-16" />)}
+            <div className="space-y-2.5">
+              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-[72px]" />)}
             </div>
           ) : (
-            <div className="stagger space-y-2" key={blockFilter ?? 'all'}>
+            <motion.div className="space-y-2.5" initial="off" animate="on"
+              variants={{ on: { transition: { staggerChildren: .045 } } }} key={blockFilter ?? 'all'}>
               {visible.map(e => (
-                <button key={e.id} onClick={() => setSelected(e.id)}
-                  className={`panel panel-hover rail-${e.risk} flex w-full items-center gap-3 p-3 text-left`}>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[var(--edge)] bg-[var(--deep)] text-[var(--text-dim)]">
-                    <SectorIcon sector={e.sector} size={17} />
+                <motion.button key={e.id} layout onClick={() => setSelected(e.id)}
+                  variants={{ off: { opacity: 0, y: 20 }, on: { opacity: 1, y: 0, transition: spring } }}
+                  whileHover={{ x: 8, transition: { type: 'spring', stiffness: 500, damping: 28 } }}
+                  whileTap={{ scale: .985 }}
+                  className={`panel panel-hover rail-${e.risk} group flex w-full items-center gap-4 p-4 text-left`}>
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--edge)] bg-[var(--bg-2)] text-[var(--ink-dim)] transition-colors group-hover:border-[rgba(201,242,75,.35)] group-hover:text-[var(--lime)]">
+                    <SectorIcon sector={e.sector} size={18} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-bold text-[var(--text)]">{e.name}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="display truncate text-[15px] font-bold text-[var(--ink)]">{e.name}</span>
                       <RiskBadge risk={e.risk} small />
                     </div>
-                    <div className="mono text-[10px] uppercase tracking-wide text-[var(--text-faint)]">
+                    <div className="mono mt-0.5 text-[9px] uppercase tracking-[.18em] text-[var(--ink-faint)]">
                       {SECTOR_LABEL[e.sector]} · {e.village} · {e.block}
                     </div>
                     {e.top_reason && (
-                      <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-[var(--text-dim)]">
-                        <Icon.arrowRight size={10} className="shrink-0 text-[var(--text-faint)]" />
+                      <div className="mt-1 flex items-center gap-1.5 truncate text-xs text-[var(--ink-dim)]">
+                        <Icon.arrowRight size={10} className="shrink-0 text-[var(--ink-faint)]" />
                         {e.top_reason.text_en}
                       </div>
                     )}
                   </div>
-                  {e.reason_count > 0 && (
-                    <span className="mono num rounded-md border border-[var(--edge)] bg-[var(--deep)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--text-dim)]">
-                      {e.reason_count}
-                    </span>
-                  )}
-                </button>
+                  <span className="translate-x-1 text-[var(--ink-faint)] opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:text-[var(--lime)] group-hover:opacity-100">
+                    <Icon.arrowRight size={16} />
+                  </span>
+                </motion.button>
               ))}
-            </div>
+            </motion.div>
           )}
         </div>
 
-        {/* ── right rail ── */}
-        <div className="space-y-4">
-          {lead && <div className="rise rise-1"><LeadGauge lead={lead} /></div>}
-
+        {/* ── rail ── */}
+        <div className="space-y-5">
           {district && (
-            <section className="panel rise rise-2">
+            <motion.section className="panel panel-lit" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .2 }}>
               <div className="panel-head"><Icon.map size={11} className="lit" /> District constellation</div>
-              <div className="p-3">
+              <div className="p-4">
                 <DistrictMap d={district} active={blockFilter} onSelectBlock={setBlockFilter} />
               </div>
-            </section>
+            </motion.section>
           )}
 
           {district && district.bulletins.length > 0 && (
-            <section className="panel rise rise-3" style={{ borderColor: 'rgba(251,95,95,.3)' }}>
+            <motion.section className="panel" style={{ borderColor: 'rgba(248,113,113,.3)' }}
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .3 }}>
               <div className="panel-head" style={{ color: 'var(--sig-red)' }}>
                 <Icon.signal size={11} /> Cluster bulletins
               </div>
-              <div className="space-y-2 p-3">
+              <div className="space-y-2.5 p-3.5">
                 {district.bulletins.map((b, i) => (
-                  <div key={i} className="fade rounded-lg border border-[rgba(251,95,95,.2)] bg-[rgba(251,95,95,.05)] p-2.5">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
+                  <motion.div key={i} className="rounded-xl border border-[rgba(248,113,113,.2)] bg-[rgba(248,113,113,.05)] p-3"
+                    initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: .35 + i * .1 }}>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--ink)]">
                       <SectorIcon sector={b.sector} size={13} /> {SECTOR_LABEL[b.sector]}
-                      <span className="mono num ml-auto rounded bg-[rgba(251,95,95,.15)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--sig-red)]">
+                      <span className="mono num ml-auto rounded-md bg-[rgba(248,113,113,.14)] px-1.5 py-0.5 text-[8.5px] font-bold tracking-wider text-[var(--sig-red)]">
                         {b.stressed_units}/{b.exposed_units} STRESSED
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">{b.text}</p>
-                  </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--ink-dim)]">{b.text}</p>
+                  </motion.div>
                 ))}
               </div>
-            </section>
+            </motion.section>
           )}
 
-          <section className="panel rise rise-4" style={{ borderStyle: 'dashed' }}>
+          <motion.section className="panel" style={{ borderStyle: 'dashed' }}
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: .4 }}>
             <div className="panel-head">Scenario simulator · demo</div>
-            <div className="flex flex-wrap gap-2 p-3">
-              <button disabled={!!busy} onClick={() => runShock('feed_spike', 'feed spike')}
-                className="flex items-center gap-1.5 rounded-lg border border-[rgba(251,191,36,.4)] bg-[rgba(251,191,36,.1)] px-3 py-2 text-xs font-bold text-[var(--sig-amber)] transition hover:bg-[rgba(251,191,36,.18)] active:scale-95 disabled:opacity-30">
-                <Icon.play size={11} /> Feed-price spike
-              </button>
-              <button disabled={!!busy} onClick={() => runShock('monsoon_deficit', 'monsoon deficit')}
-                className="flex items-center gap-1.5 rounded-lg border border-[rgba(56,189,248,.4)] bg-[rgba(56,189,248,.08)] px-3 py-2 text-xs font-bold text-[var(--sig-blue)] transition hover:bg-[rgba(56,189,248,.16)] active:scale-95 disabled:opacity-30">
-                <Icon.play size={11} /> Monsoon deficit
-              </button>
-              <button disabled={!!busy} onClick={runReset}
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--edge-lit)] bg-[var(--surface-2)] px-3 py-2 text-xs font-bold text-[var(--text-dim)] transition hover:text-[var(--text)] active:scale-95 disabled:opacity-30">
+            <div className="flex flex-wrap gap-2 p-3.5">
+              {[
+                { key: 'feed_spike', label: 'Feed-price spike', color: 'var(--sig-amber)', bg: 'rgba(251,191,36' },
+                { key: 'monsoon_deficit', label: 'Monsoon deficit', color: 'var(--sig-blue)', bg: 'rgba(96,165,250' },
+              ].map(s => (
+                <motion.button key={s.key} disabled={!!busy}
+                  whileHover={{ scale: 1.04 }} whileTap={{ scale: .95 }}
+                  onClick={() => runShock(s.key, s.label)}
+                  className="flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-colors disabled:opacity-30"
+                  style={{ color: s.color, borderColor: `${s.bg},.4)`, background: `${s.bg},.08)` }}>
+                  <Icon.play size={11} /> {s.label}
+                </motion.button>
+              ))}
+              <motion.button disabled={!!busy} whileHover={{ scale: 1.04 }} whileTap={{ scale: .95 }}
+                onClick={runReset}
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--edge-lit)] bg-[var(--surface-2)] px-3.5 py-2 text-xs font-bold text-[var(--ink-dim)] transition-colors hover:text-[var(--ink)] disabled:opacity-30">
                 <Icon.refresh size={11} /> Reset
-              </button>
+              </motion.button>
             </div>
             {busy && (
-              <div className="mono flex items-center gap-2 px-4 pb-3 text-[10px] uppercase tracking-wider text-[var(--text-faint)]">
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--edge)] border-t-[var(--sig-green)]" />
+              <div className="mono flex items-center gap-2 px-4 pb-3.5 text-[9px] uppercase tracking-[.2em] text-[var(--ink-faint)]">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--edge)] border-t-[var(--lime)]" />
                 {busy} — running cascade
               </div>
             )}
-          </section>
+          </motion.section>
         </div>
       </div>
     </>
